@@ -1,25 +1,15 @@
 import Button from "@/components/ui/button";
-
+import Navbar from "@/components/layout/navbar";
+import FeaturesSection from "@/components/layout/features-section";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-brand-dark text-brand-textPrimary">
-      {/* HEADER / NAVBAR SIMPLES */}
-      <header className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-800">
-        <div className="text-2xl font-bold tracking-wider text-brand-textPrimary">
-          VKX<span className="text-brand-accent">SPORTS</span>
-        </div>
-        <nav className="hidden md:flex space-x-8 text-brand-textSecondary">
-          <a href="#funcionalidades" className="hover:text-brand-textPrimary transition">Funcionalidades</a>
-          <a href="#planos" className="hover:text-brand-textPrimary transition">Planos</a>
-        </nav>
-        <div>
-          <Button variant="secondary">Entrar</Button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-brand-dark text-brand-textPrimary overflow-x-hidden">
+      {/* NAVBAR */}
+      <Navbar />
 
       {/* HERO SECTION */}
-      <main className="max-w-7xl mx-auto px-6 pt-20 pb-16 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12">
+      <main className="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12">
         <div className="flex-1 space-y-6">
           <span className="inline-block bg-green-500/10 text-brand-accent px-4 py-1.5 rounded-full text-sm font-medium tracking-wide">
             PROJETO EM DESENVOLVIMENTO
@@ -60,27 +50,8 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* SEÇÃO DE FUNCIONALIDADES */}
-      <section id="funcionalidades" className="max-w-7xl mx-auto px-6 py-20 border-t border-slate-800">
-        <h2 className="text-3xl font-bold text-center mb-12">Tudo o que você precisa para seu torneio</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-brand-card p-6 rounded-xl border border-slate-800">
-            <div className="text-brand-accent text-3xl mb-4">🏆</div>
-            <h4 className="text-xl font-bold mb-2">Mata-Mata Automatizado</h4>
-            <p className="text-brand-textSecondary text-sm">Gere chaves de oitavas, quartas, semis e final automaticamente com um clique.</p>
-          </div>
-          <div className="bg-brand-card p-6 rounded-xl border border-slate-800">
-            <div className="text-brand-accent text-3xl mb-4">📊</div>
-            <h4 className="text-xl font-bold mb-2">Tabela de Classificação</h4>
-            <p className="text-brand-textSecondary text-sm">Cálculo em tempo real de pontos, saldo de gols, vitórias e critérios de desempate.</p>
-          </div>
-          <div className="bg-brand-card p-6 rounded-xl border border-slate-800">
-            <div className="text-brand-accent text-3xl mb-4">⚽</div>
-            <h4 className="text-xl font-bold mb-2">Artilharia e Cartões</h4>
-            <p className="text-brand-textSecondary text-sm">Controle completo de suspensões, lista de goleadores e assistências do campeonato.</p>
-          </div>
-        </div>
-      </section>
+      {/* SEÇÃO MODULAR DE FUNCIONALIDADES */}
+      <FeaturesSection />
     </div>
   );
 }
