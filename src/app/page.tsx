@@ -1,7 +1,7 @@
 import Navbar from "@/components/layout/navbar";
 import HeroSection from "@/components/layout/hero-section";
 import FeaturesSection from "@/components/layout/features-section";
-//import CharacteristicsSection from "@/components/layout/characteristics-section";
+import CharacteristicsSection from "@/components/layout/characteristics-section";
 
 export default function HomePage() {
   return (
@@ -24,7 +24,7 @@ export default function HomePage() {
         </section>
 
         <section id="funcionalidades" className="py-12">
-          
+          <CharacteristicsSection />
         </section>
       </div>
     </div>
