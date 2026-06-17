@@ -1,7 +1,7 @@
 import Navbar from "@/components/layout/navbar";
-import HeroSection from "@/components/layout/hero-section";
-import FeaturesSection from "@/components/layout/features-section";
-import CharacteristicsSection from "@/components/layout/characteristics-section";
+import HeroSection from "@/components/home/hero-section";
+import FeaturesSection from "@/components/home/features-section";
+import CharacteristicsSection from "@/components/home/characteristics-section";
 
 export default function HomePage() {
   return (
