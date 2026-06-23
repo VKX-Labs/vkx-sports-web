@@ -1,22 +1,24 @@
 "use client";
 
-const NAVIGATION_LINKS = [
+import { Play, Apple } from "lucide-react";
+
+const navigationLinks = [
   { label: "Início", href: "#inicio" },
   { label: "Características", href: "#features" },
   { label: "Buscar Torneios", href: "#campeonatos" },
   { label: "Planos e Preços", href: "#planos" },
 ];
 
-const APP_STORES = [
+const appStores = [
   {
-    icon: "🤖",
-    label: "Get it on",
+    label: "Disponível no",
     store: "Google Play",
+    Icon: Play,
   },
   {
-    icon: "🍏",
-    label: "Download on the",
+    label: "Baixar na",
     store: "App Store",
+    Icon: Apple,
   },
 ];
 
@@ -31,7 +33,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-8 border-b border-slate-900 pb-12 md:grid-cols-12 md:gap-6">
           <div className="space-y-4 md:col-span-5">
             <div className="flex items-center gap-2">
-              <span className="text-xl">⚡</span>
+              <span className="text-xl text-brand-accent">⚡</span>
 
               <span className="text-xl font-black tracking-wider text-white">
                 VKX <span className="text-brand-accent">SPORTS</span>
@@ -63,7 +65,7 @@ export default function Footer() {
             </h4>
 
             <ul className="space-y-2.5 text-xs">
-              {NAVIGATION_LINKS.map((link) => (
+              {navigationLinks.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
@@ -86,21 +88,21 @@ export default function Footer() {
               Disponível em breve para todas as plataformas.
             </p>
 
-            <div className="flex flex-wrap gap-2.5 pt-2">
-              {APP_STORES.map((store) => (
+            <div className="flex flex-wrap gap-3 pt-2">
+              {appStores.map(({ label, store, Icon }) => (
                 <div
-                  key={store.store}
-                  className="flex cursor-not-allowed select-none items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 opacity-60"
+                  key={store}
+                  className="flex w-[145px] cursor-not-allowed select-none items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-900 px-4 py-2 opacity-50"
                 >
-                  <span className="text-base">{store.icon}</span>
+                  <Icon className="h-5 w-5 fill-slate-400 text-slate-400" />
 
                   <div>
-                    <p className="text-[9px] font-bold uppercase leading-none text-slate-500">
-                      {store.label}
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                      {label}
                     </p>
 
-                    <p className="text-xs font-bold leading-tight text-white">
-                      {store.store}
+                    <p className="mt-0.5 text-xs font-bold text-slate-300">
+                      {store}
                     </p>
                   </div>
                 </div>

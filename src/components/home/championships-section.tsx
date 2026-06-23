@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import {
+  Search,
+  Trophy,
+  MapPin,
+  ArrowRight,
+  ServerCrash,
+} from "lucide-react";
+
 import Button from "@/components/ui/button";
 
-// Contrato da estrutura de um campeonato vindo da base de dados
 interface Championship {
   id: string;
   name: string;
@@ -18,101 +25,150 @@ export default function ChampionshipsSection() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Função que fará a chamada real para a base de dados no futuro
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSearch(event: React.FormEvent) {
+    event.preventDefault();
+
     if (!searchQuery.trim()) return;
 
     setIsLoading(true);
     setHasSearched(true);
 
     try {
-      // TODO: Integrar com o serviço da API (ex: services/championship.service.ts)
-      // const data = await searchChampionshipsFromDB(searchQuery);
-      // setResults(data);
-      
-      // Por enquanto, simulando um retorno vazio do banco de dados real
       setResults([]);
     } catch (error) {
-      console.error("Erro ao buscar campeonatos na base de dados:", error);
+      console.error("Erro ao buscar campeonatos:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <section id="campeonatos" className="max-w-7xl mx-auto px-6 py-24 relative overflow-hidden border-t border-slate-800/60">
-      
-      {/* Luz ambiente de fundo */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-[120px] pointer-events-none" />
+    <section
+      id="campeonatos"
+      className="relative mx-auto max-w-7xl overflow-hidden border-t border-slate-800/60 px-6 py-24"
+    >
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-accent/5 blur-[120px]" />
 
-      <div className="relative z-10 space-y-12 max-w-4xl mx-auto">
-        
-        {/* BLOCO DE BUSCA NO SISTEMA */}
-        <div className="bg-gradient-to-r from-slate-900 to-brand-card p-8 md:p-12 rounded-3xl border border-slate-800 shadow-2xl text-center space-y-6">
+      <div className="relative z-10 mx-auto max-w-4xl space-y-12">
+        <div className="space-y-6 rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-8 text-center shadow-2xl md:p-12">
           <div className="space-y-3">
-            <span className="text-3xl">🏆</span>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Encontre seu <span className="text-brand-accent">Campeonato</span>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-brand-accent/20 bg-brand-accent/10">
+              <Trophy className="h-6 w-6 text-brand-accent" />
+            </div>
+
+            <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">
+              Encontre seu{" "}
+              <span className="text-brand-accent">Campeonato</span>
             </h2>
-            <p className="text-brand-textSecondary text-sm md:text-base max-w-xl mx-auto">
-              Digite o termo desejado para pesquisar diretamente na nossa base de dados oficial de ligas e torneios.
+
+            <p className="mx-auto max-w-xl text-sm text-slate-400 md:text-base">
+              Pesquise diretamente na nossa base oficial de ligas e torneios.
             </p>
           </div>
 
-          {/* FORMULÁRIO DE PESQUISA */}
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto pt-2">
-            <div className="flex-1 relative">
+          <form
+            onSubmit={handleSearch}
+            className="mx-auto flex max-w-2xl flex-col gap-3 pt-2 sm:flex-row"
+          >
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+
               <input
-                type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Pesquise por nome, modalidade ou cidade..."
-                className="w-full bg-brand-dark border border-slate-750 rounded-xl px-5 py-4 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-brand-accent transition-colors duration-200"
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 py-4 pl-11 pr-5 text-sm text-white transition-colors placeholder:text-slate-600 focus:border-brand-accent/60 focus:outline-none"
               />
             </div>
-            <Button type="submit" variant="primary" className="whitespace-nowrap font-bold" disabled={isLoading}>
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading}
+              className="h-[50px] whitespace-nowrap font-bold sm:h-auto"
+            >
               {isLoading ? "Buscando..." : "Buscar Torneio"}
             </Button>
           </form>
         </div>
 
-        {/* CONTAINER DE RESULTADOS DA BASE DE DADOS */}
         {hasSearched && (
-          <div className="space-y-6 animate-fade-in">
-            <h3 className="text-xl font-bold text-white tracking-tight">
+          <div className="animate-fade-in space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">
               Resultados da pesquisa
             </h3>
 
             {isLoading ? (
-              <div className="text-center py-12 text-brand-textSecondary border border-dashed border-slate-800 rounded-2xl">
-                <p className="text-sm">Consultando servidores VKX Sports...</p>
-              </div>
-            ) : results.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {results.map((tournament) => (
-                  <div key={tournament.id} className="bg-brand-card p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-lg font-bold text-white">{tournament.name}</h4>
-                      <p className="text-sm text-brand-textSecondary">📍 {tournament.location}</p>
-                    </div>
-                    <span className="text-xs text-brand-accent mt-4 block">Ver painel completo →</span>
-                  </div>
-                ))}
-              </div>
+              <LoadingState />
+            ) : results.length ? (
+              <ResultsList results={results} />
             ) : (
-              /* ESTADO REAL CASO NÃO ENCONTRE NADA NA CONSULTA */
-              <div className="text-center py-12 bg-brand-card/50 border border-slate-800 rounded-2xl space-y-2">
-                <p className="text-white font-semibold">Nenhum campeonato encontrado</p>
-                <p className="text-xs text-brand-textSecondary max-w-md mx-auto px-4">
-                  Não encontramos nenhuma competição ativa ou finalizada com o termo <span className="text-brand-accent">"{searchQuery}"</span> na nossa base de dados atual.
-                </p>
-              </div>
+              <EmptyState search={searchQuery} />
             )}
           </div>
         )}
-
       </div>
     </section>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-800 py-12 text-center text-sm text-slate-500">
+      Consultando servidores VKX Sports...
+    </div>
+  );
+}
+
+function ResultsList({ results }: { results: Championship[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {results.map((championship) => (
+        <div
+          key={championship.id}
+          className="group flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/60 p-6 transition-all duration-300 hover:border-brand-accent/40"
+        >
+          <div className="space-y-1">
+            <h4 className="text-lg font-bold text-white transition-colors group-hover:text-brand-accent">
+              {championship.name}
+            </h4>
+
+            <p className="flex items-center gap-1.5 text-sm text-slate-400">
+              <MapPin className="h-3.5 w-3.5 text-slate-500" />
+              {championship.location}
+            </p>
+          </div>
+
+          <span className="mt-4 flex items-center gap-1 text-xs font-bold text-brand-accent">
+            Ver painel completo
+            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ search }: { search: string }) {
+  return (
+    <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-6 py-12 text-center">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-slate-500">
+        <ServerCrash className="h-5 w-5" />
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-sm font-bold text-white">
+          Nenhum campeonato encontrado
+        </p>
+
+        <p className="mx-auto max-w-md text-xs leading-relaxed text-slate-500">
+          Não encontramos nenhuma competição ativa ou finalizada com o termo{" "}
+          <span className="font-semibold text-brand-accent">
+            "{search}"
+          </span>{" "}
+          na nossa base de dados.
+        </p>
+      </div>
+    </div>
   );
 }
