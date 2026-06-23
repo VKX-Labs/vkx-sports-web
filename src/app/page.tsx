@@ -5,6 +5,7 @@ import CharacteristicsSection from "@/components/home/characteristics-section";
 import ChampionshipsSection from "@/components/home/championships-section";
 import PricingSection from "@/components/home/pricing-section";
 import TestimonialsSection from "@/components/home/testimonials-section"; 
+import Footer from "@/components/layout/footer";
 
 export default function HomePage() {
   return (
@@ -34,6 +35,8 @@ export default function HomePage() {
         <section id="planos" className="py-12">
           <PricingSection />
         </section>
+
+        <Footer />
       </div>
     </div>
   );
