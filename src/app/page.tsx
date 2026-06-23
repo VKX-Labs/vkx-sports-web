@@ -4,6 +4,7 @@ import FeaturesSection from "@/components/home/features-section";
 import CharacteristicsSection from "@/components/home/characteristics-section";
 import ChampionshipsSection from "@/components/home/championships-section";
 import PricingSection from "@/components/home/pricing-section";
+import TestimonialsSection from "@/components/home/testimonials-section"; 
 
 export default function HomePage() {
   return (
@@ -16,6 +17,7 @@ export default function HomePage() {
         <section id="inicio">
           <HeroSection />
         </section>
+        <TestimonialsSection />
 
         <section id="features" className="py-12">
           <FeaturesSection />
