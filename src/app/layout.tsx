@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthProvider } from "@/providers/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,7 @@ export default function RootLayout({
       style={{ scrollBehavior: "smooth" }}
     >
       <body className="bg-brand-dark text-brand-textPrimary">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
