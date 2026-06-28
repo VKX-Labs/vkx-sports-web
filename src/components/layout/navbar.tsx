@@ -1,80 +1,129 @@
 "use client";
 
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
+
 import Button from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 
-export default function Navbar() {
-  const { user, profile, loading } = useAuth();
+const navigation = [
+  { label: "Início", href: "#inicio" },
+  { label: "Características", href: "#features" },
+  { label: "Funcionalidades", href: "#funcionalidades" },
+  { label: "Planos", href: "#planos" },
+  { label: "Contato", href: "#contato" },
+];
 
-  const initials = profile?.full_name
-    ? profile.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
+export default function Navbar() {
+  const { user, profile, loading, signOut } = useAuth();
+
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const initials =
+    profile?.full_name
+      ?.split(" ")
+      .map((name) => name[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "US";
+
+  const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
+
+  const handleLogout = async () => {
+    setOpen(false);
+    await signOut();
+  };
 
   return (
-    <header className="w-full bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-800/80 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        
-        <div className="text-2xl font-black tracking-wider text-brand-textPrimary cursor-pointer hover:opacity-90 transition">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+
+        <Link
+          href="/"
+          className="text-2xl font-black tracking-wider text-white transition hover:opacity-80"
+        >
           VKX<span className="text-brand-accent">SPORTS</span>
-        </div>
-        <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-brand-textSecondary">
-          <a 
-            href="#inicio" 
-            className="hover:text-brand-textPrimary hover:scale-105 transition-all duration-200"
-          >
-            Início
-          </a>
-          <a 
-            href="#features" 
-            className="hover:text-brand-textPrimary hover:scale-105 transition-all duration-200"
-          >
-            Características
-          </a>
-          <a 
-            href="#funcionalidades" 
-            className="hover:text-brand-textPrimary hover:scale-105 transition-all duration-200"
-          >
-            Funcionalidades
-          </a>
-          <a 
-            href="#planos" 
-            className="hover:text-brand-textPrimary hover:scale-105 transition-all duration-200"
-          >
-            Planos
-          </a>
-          <a 
-            href="#contato" 
-            className="hover:text-brand-textPrimary hover:scale-105 transition-all duration-200"
-          >
-            Fale Conosco
-          </a>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+          {navigation.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="transition hover:text-white"
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div
+          ref={dropdownRef}
+          className="relative flex items-center"
+        >
           {loading ? (
-            <div className="w-24 h-10 bg-slate-800 rounded-lg animate-pulse" />
+            <div className="h-10 w-24 animate-pulse rounded-xl border border-slate-800 bg-slate-900" />
           ) : user ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-brand-textPrimary">
-                {profile?.full_name?.split(" ")[0]}
-              </span>
-              <div className="w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center text-brand-dark font-bold text-sm">
-                {initials}
-              </div>
-            </div>
+            <>
+              <button
+                onClick={() => setOpen((prev) => !prev)}
+                className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/70 py-1.5 pl-4 pr-1.5 transition hover:border-brand-accent/50"
+              >
+                <span className="text-sm font-medium text-white">
+                  Olá, {firstName}
+                </span>
+
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent text-xs font-black text-slate-950">
+                  {initials}
+                </span>
+              </button>
+
+              {open && (
+                <div className="absolute right-0 top-12 w-48 rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-2xl">
+
+                  <div className="border-b border-slate-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Minha conta
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </button>
+
+                </div>
+              )}
+            </>
           ) : (
             <Link href="/register">
-              <Button variant="secondary">Entrar</Button>
+              <Button variant="secondary">
+                Entrar
+              </Button>
             </Link>
           )}
         </div>
+
       </div>
     </header>
   );
