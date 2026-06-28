@@ -1,261 +1,361 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation"; 
 import {
   Mail,
   Lock,
   User,
-  ShieldAlert,
-  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
   Loader2,
+  Globe2,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import { supabase } from "@/lib/supabase";
-import Button from "@/components/ui/button";
+export default function AuthPage() {
+  const router = useRouter(); // Inicialização do roteador
+  const [isLogin, setIsLogin] = useState(false);
 
-export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  function handleChange(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    setForm({
-      ...form,
-      [event.target.name]: event.target.value,
-    });
-  }
+  const [feedback, setFeedback] = useState({
+    type: "",
+    message: "",
+  });
 
-  async function handleRegister(
-    event: React.FormEvent
-  ) {
+
+  const updateField = (field: string, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+
+  const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    setIsLoading(true);
-    setErrorMessage("");
-    setSuccess(false);
+    setLoading(true);
+
+    setFeedback({
+      type: "",
+      message: "",
+    });
+
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: {
-            full_name: form.name,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        setSuccess(true);
-
-        setForm({
-          name: "",
-          email: "",
-          password: "",
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
         });
+
+        if (error) throw error;
+
+        setFeedback({
+          type: "success",
+          message: "Login realizado com sucesso. Redirecionando...",
+        });
+
+        // Pequeno intervalo para o usuário ler o feedback de sucesso antes de mudar de tela
+        setTimeout(() => {
+          router.push("/");
+        }, 800);
+
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: {
+              full_name: form.name,
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        setFeedback({
+          type: "success",
+          message: "Conta criada com sucesso!",
+        });
+        
+        // Se o e-mail de confirmação estiver desativado no painel, altera para tela de login automática
+        setTimeout(() => {
+          setIsLogin(true);
+        }, 1500);
       }
+
     } catch (error: any) {
-      setErrorMessage(
-        error.message ?? "Não foi possível criar sua conta."
-      );
+      setFeedback({
+        type: "error",
+        message:
+          error.message || "Não foi possível concluir a autenticação.",
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }
+  };
+
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-dark px-6">
+    <main className="min-h-screen bg-[#0B0F19] flex items-center justify-center px-4 relative overflow-hidden">
 
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20" />
-
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-accent/5 blur-[120px]" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
 
-      <section className="relative z-10 w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-md">
+      <section className="w-full max-w-md relative z-10">
 
-        <header className="space-y-3 text-center">
 
-          <Link
-            href="/"
-            className="text-sm font-black uppercase tracking-wider text-white transition-colors hover:text-brand-accent"
-          >
-            VKX <span className="text-brand-accent">Sports</span>
-          </Link>
+        <header className="text-center mb-8">
 
-          <h1 className="pt-2 text-2xl font-black tracking-tight text-white">
-            Criar conta profissional
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase mb-4">
+
+            <Globe2 className="w-4 h-4" />
+
+            Plataforma VKX Sports
+
+          </div>
+
+
+          <h1 className="text-3xl font-black text-white">
+            VKX <span className="text-emerald-500">SPORTS</span>
           </h1>
 
-          <p className="text-xs text-slate-400">
-            Gerencie campeonatos, equipes e estatísticas em uma única plataforma.
+
+          <p className="text-sm text-gray-400 mt-2">
+            {isLogin
+              ? "Acesse seu painel de gerenciamento."
+              : "Crie sua conta para administrar campeonatos."}
           </p>
 
         </header>
 
 
-        {errorMessage && (
-          <AlertBox type="error">
-            <ShieldAlert className="h-4 w-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </AlertBox>
-        )}
+
+        <div className="bg-[#111827]/70 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 shadow-2xl">
 
 
-        {success && (
-          <AlertBox type="success">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {feedback.message && (
 
-            <div>
-              <p className="font-bold">
-                Cadastro realizado com sucesso.
-              </p>
+            <div
+              className={`mb-5 p-3 rounded-xl text-sm border ${
+                feedback.type === "success"
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/10 border-red-500/20 text-red-400"
+              }`}
+            >
 
-              <p className="mt-1 text-slate-400">
-                Verifique seu e-mail para confirmar o acesso.
-              </p>
+              {feedback.message}
+
             </div>
 
-          </AlertBox>
-        )}
+          )}
 
 
-        <form
-          onSubmit={handleRegister}
-          className="space-y-4"
-        >
 
-          <InputField
-            label="Nome completo"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Digite seu nome"
-            icon={<User />}
-          />
+          <form onSubmit={handleAuth} className="space-y-4">
 
 
-          <InputField
-            label="E-mail"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="seu@email.com"
-            icon={<Mail />}
-          />
+            {!isLogin && (
 
+              <InputField
+                icon={User}
+                label="Nome completo"
+                placeholder="Digite seu nome"
+                value={form.name}
+                onChange={(value) =>
+                  updateField("name", value)
+                }
+              />
 
-          <InputField
-            label="Senha"
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={handleChange}
-            placeholder="Mínimo 6 caracteres"
-            icon={<Lock />}
-          />
-
-
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="mt-2 flex w-full items-center justify-center gap-2 py-3.5 font-bold"
-            variant="primary"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Criando conta...
-              </>
-            ) : (
-              "Criar conta"
             )}
-          </Button>
-
-        </form>
 
 
-        <footer className="pt-2 text-center text-xs text-slate-500">
 
-          Já possui cadastro?{" "}
+            <InputField
+              icon={Mail}
+              label="E-mail"
+              placeholder="seu@email.com"
+              type="email"
+              value={form.email}
+              onChange={(value) =>
+                updateField("email", value)
+              }
+            />
 
-          <Link
-            href="/login"
-            className="font-semibold text-brand-accent hover:underline"
-          >
-            Entrar na plataforma
-          </Link>
 
-        </footer>
+
+            <InputField
+              icon={Lock}
+              label="Senha"
+              placeholder="••••••••"
+              type="password"
+              value={form.password}
+              onChange={(value) =>
+                updateField("password", value)
+              }
+            />
+
+
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-50"
+            >
+
+              {loading ? (
+
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando
+                </>
+
+              ) : (
+
+                <>
+                  {isLogin
+                    ? "Entrar na plataforma"
+                    : "Criar conta"}
+
+                  <ArrowRight className="w-4 h-4" />
+
+                </>
+
+              )}
+
+            </button>
+
+
+          </form>
+
+
+
+
+          <div className="text-center mt-6 text-sm text-gray-400">
+
+            {isLogin
+              ? "Ainda não possui uma conta?"
+              : "Já possui cadastro?"}
+
+
+            <button
+              onClick={() => {
+
+                setIsLogin(!isLogin);
+
+                setFeedback({
+                  type: "",
+                  message: "",
+                });
+
+              }}
+
+              className="ml-1 text-emerald-400 font-semibold hover:underline"
+            >
+
+              {isLogin
+                ? "Criar conta"
+                : "Fazer login"}
+
+            </button>
+
+          </div>
+
+
+        </div>
+
+
+
+
+        <div className="flex items-center justify-center gap-2 mt-6 text-xs text-gray-600">
+
+          <ShieldCheck className="w-4 h-4" />
+
+          Ambiente protegido com autenticação segura.
+
+        </div>
+
 
       </section>
+
 
     </main>
   );
 }
 
 
-function InputField({
-  label,
-  icon,
-  ...props
-}: {
-  label: string;
-  icon: React.ReactNode;
-  [key: string]: any;
-}) {
-  return (
-    <div className="space-y-1.5">
 
-      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+
+function InputField({
+  icon: Icon,
+  label,
+  placeholder,
+  value,
+  onChange,
+  type = "text",
+}: {
+  icon: LucideIcon;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+
+
+  return (
+
+    <div>
+
+      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
         {label}
       </label>
 
+
+
       <div className="relative">
 
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-          {icon}
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+
+          <Icon className="w-4 h-4" />
+
         </div>
 
+
+
         <input
-          {...props}
-          className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-600 transition-colors focus:border-brand-accent/50 focus:outline-none"
+
+          type={type}
+
+          required
+
+          value={value}
+
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
+
+          placeholder={placeholder}
+
+          className="w-full bg-[#0B0F19]/80 border border-gray-800 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+
         />
+
 
       </div>
 
-    </div>
-  );
-}
 
-
-function AlertBox({
-  children,
-  type,
-}: {
-  children: React.ReactNode;
-  type: "error" | "success";
-}) {
-  return (
-    <div
-      className={`flex items-start gap-3 rounded-xl border p-4 text-xs ${
-        type === "error"
-          ? "border-red-500/20 bg-red-500/10 text-red-400"
-          : "border-brand-accent/20 bg-brand-accent/10 text-brand-accent"
-      }`}
-    >
-      {children}
     </div>
+
   );
 }
