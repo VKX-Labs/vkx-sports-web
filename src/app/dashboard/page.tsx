@@ -9,12 +9,12 @@ export default function DashboardPage() {
     <>
       <Header title="Dashboard" description="Visão geral da sua plataforma" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatsCard label="Campeonatos" value={12} icon={Trophy} />
-        <StatsCard label="Equipes" value={85} icon={Users} />
-        <StatsCard label="Jogadores" value={1820} icon={UserSquare2} />
-        <StatsCard label="Jogos" value={412} icon={Calendar} />
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatsCard title="Campeonatos" value={0} icon={Trophy} />
+        <StatsCard title="Equipes" value={0} icon={Users} />
+        <StatsCard title="Jogadores" value={0} icon={UserSquare2} />
+        <StatsCard title="Jogos" value={0} icon={Calendar} />
+    </div>
 
       <Section title="Campeonatos Recentes">
         <EmptyState
