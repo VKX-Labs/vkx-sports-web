@@ -5,9 +5,16 @@ import { Plus, Trophy } from "lucide-react";
 
 import DashboardHeader from "@/components/dashboard/Header";
 import EmptyState from "@/components/dashboard/EmptyState";
+import ChampionshipFormModal from "@/components/dashboard/ChampionshipFormModal";
 
 export default function CampeonatosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+
+  const handleSuccess = () => {
+   
+    console.log("Campeonato criado com sucesso! Atualizar listagem...");
+  };
 
   return (
     <div className="space-y-6">
@@ -39,10 +46,11 @@ export default function CampeonatosPage() {
           </button>
         }
       />
-
-      {isModalOpen && (
-        <></>
-      )}
+      <ChampionshipFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }
