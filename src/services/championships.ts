@@ -132,3 +132,44 @@ export async function createChampionshipWithSeason(
     season,
   };
 }
+
+export async function getMyChampionships() {
+  const { data, error } = await supabase
+    .from('championships')
+    .select(`
+      id,
+      name,
+      slug,
+      created_at,
+      seasons (
+        id,
+        name,
+        status,
+        modality,
+        city,
+        state,
+        tournament_type,
+        max_teams
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+export async function deleteChampionship(id: string) {
+  const { error } = await supabase
+    .from('championships')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+}
