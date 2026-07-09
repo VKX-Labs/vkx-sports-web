@@ -1,7 +1,8 @@
+import { Globe } from "lucide-react";
+
 import Header from "@/components/dashboard/Header";
 import Section from "@/components/dashboard/Section";
 import EmptyState from "@/components/dashboard/EmptyState";
-import { Globe } from "lucide-react";
 
 export default function OrganizadorPage() {
   return (

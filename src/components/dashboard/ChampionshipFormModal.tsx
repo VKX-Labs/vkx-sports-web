@@ -2,13 +2,17 @@
 
 import React, { useState } from "react";
 import { X, Loader2 } from "lucide-react";
+
 import { createChampionshipWithSeason } from "@/services/championships";
+import type { CreateChampionshipInput } from "@/services/championships";
 
 interface ChampionshipFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
+
+type TournamentType = CreateChampionshipInput["tournament_type"];
 
 export default function ChampionshipFormModal({
   isOpen,
@@ -24,7 +28,7 @@ export default function ChampionshipFormModal({
     modality: "Futebol de Campo",
     city: "",
     state: "",
-    tournament_type: "PONTOS_CORRIDOS" as any,
+    tournament_type: "PONTOS_CORRIDOS" as TournamentType,
     max_teams: "",
     start_date: "",
     end_date: "",
@@ -50,8 +54,8 @@ export default function ChampionshipFormModal({
 
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Ocorreu um erro ao criar o campeonato.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocorreu um erro ao criar o campeonato.");
     } finally {
       setLoading(false);
     }
@@ -254,7 +258,7 @@ export default function ChampionshipFormModal({
                     onChange={() =>
                       setFormData({
                         ...formData,
-                        tournament_type: format.id as any,
+                        tournament_type: format.id as TournamentType,
                       })
                     }
                     className="sr-only"

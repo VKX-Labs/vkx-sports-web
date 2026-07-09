@@ -1,7 +1,8 @@
+import { CreditCard } from "lucide-react";
+
 import Header from "@/components/dashboard/Header";
 import Section from "@/components/dashboard/Section";
 import EmptyState from "@/components/dashboard/EmptyState";
-import { CreditCard } from "lucide-react";
 
 export default function AssinaturaPage() {
   return (

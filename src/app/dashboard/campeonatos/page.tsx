@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Calendar,
@@ -11,7 +12,6 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 
 import DashboardHeader from "@/components/dashboard/Header";
 import EmptyState from "@/components/dashboard/EmptyState";
@@ -20,10 +20,11 @@ import {
   deleteChampionship,
   getMyChampionships,
 } from "@/services/championships";
+import type { Championship } from "@/types/championship";
 
 export default function CampeonatosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [championships, setChampionships] = useState<any[]>([]);
+  const [championships, setChampionships] = useState<Championship[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -56,8 +57,8 @@ export default function CampeonatosPage() {
       await deleteChampionship(id);
 
       setChampionships((prev) => prev.filter((champ) => champ.id !== id));
-    } catch (error: any) {
-      alert(error.message || "Erro ao excluir campeonato.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao excluir campeonato.");
     } finally {
       setDeletingId(null);
     }

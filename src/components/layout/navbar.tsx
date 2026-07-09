@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 
-import Button from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
+import Button from "@/components/ui/button";
 
 const navigation = [
   { label: "Início", href: "#inicio" },

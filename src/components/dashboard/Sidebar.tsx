@@ -11,7 +11,7 @@ import {
   CreditCard,
 } from "lucide-react";
 
-const menuItems = [
+const MENU_ITEMS = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { id: "campeonatos", label: "Campeonatos", href: "/dashboard/campeonatos", icon: Trophy },
   { id: "equipes", label: "Equipes", href: "/dashboard/equipes", icon: Users },
@@ -33,7 +33,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="p-3 space-y-1">
-          {menuItems.map((item) => {
+          {MENU_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.href === "/dashboard"

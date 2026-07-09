@@ -55,7 +55,7 @@ export default function TestimonialsSection() {
             >
               <div className="space-y-4 whitespace-normal">
                 <p className="text-xs italic leading-relaxed text-slate-300 md:text-sm">
-                  "{testimonial.quote}"
+                  &ldquo;{testimonial.quote}&rdquo;
                 </p>
 
                 <div className="h-px w-full bg-slate-800/60" />

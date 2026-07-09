@@ -1,21 +1,45 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Button from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+
 import { useAuth } from "@/providers/auth-provider";
+import Button from "@/components/ui/button";
 
 export default function HeroSection() {
-  const { user, loading } = useAuth();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
-  const handleCreateTournament = () => {
-    if (loading) return;
+  const [loading, setLoading] = useState(false);
 
-    router.push(user ? "/dashboard" : "/register");
-  };
+  function handleCreateTournament() {
+    if (authLoading) return;
+
+    router.push(user ? "/dashboard/campeonatos" : "/register");
+  }
+
+  async function handleExploreClick() {
+    if (authLoading) return;
+
+    try {
+      setLoading(true);
+
+      if (user) {
+        router.push("/dashboard/campeonatos");
+      } else {
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Erro ao navegar:", error);
+      router.push("/login");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <section className="max-w-7xl mx-auto flex flex-col items-center justify-between gap-12 px-6 pt-24 pb-20 text-center md:flex-row md:text-left">
+    <section className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-12 px-6 pt-24 pb-20 text-center md:flex-row md:text-left">
       <div className="flex-1 space-y-6">
         <span className="inline-flex rounded-full border border-brand-accent/20 bg-brand-accent/10 px-4 py-1.5 text-sm font-medium tracking-wide text-brand-accent">
           PROJETO EM DESENVOLVIMENTO
@@ -36,14 +60,22 @@ export default function HeroSection() {
           <Button
             variant="primary"
             onClick={handleCreateTournament}
-            disabled={loading}
+            disabled={authLoading}
           >
-            {loading ? "Verificando..." : "Criar Campeonato"}
+            {authLoading ? "Verificando..." : "Criar Campeonato"}
           </Button>
 
-          <Button variant="secondary">
+          <button
+            type="button"
+            onClick={handleExploreClick}
+            disabled={loading || authLoading}
+            className="flex items-center gap-2 rounded-xl border border-slate-700 bg-transparent px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            )}
             Explorar Campeonatos
-          </Button>
+          </button>
         </div>
       </div>
 

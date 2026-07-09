@@ -1,7 +1,8 @@
+import { Users } from "lucide-react";
+
 import Header from "@/components/dashboard/Header";
 import Section from "@/components/dashboard/Section";
 import EmptyState from "@/components/dashboard/EmptyState";
-import { Users } from "lucide-react";
 
 export default function EquipesPage() {
   return (

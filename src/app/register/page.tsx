@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -14,8 +13,10 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { supabase } from "@/lib/supabase";
+
 export default function AuthPage() {
-  const router = useRouter(); // Inicialização do roteador
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(false);
 
   const [form, setForm] = useState({
@@ -65,7 +66,6 @@ export default function AuthPage() {
           message: "Login realizado com sucesso. Redirecionando...",
         });
 
-        // Pequeno intervalo para o usuário ler o feedback de sucesso antes de mudar de tela
         setTimeout(() => {
           router.push("/");
         }, 800);
@@ -88,17 +88,16 @@ export default function AuthPage() {
           message: "Conta criada com sucesso!",
         });
         
-        // Se o e-mail de confirmação estiver desativado no painel, altera para tela de login automática
         setTimeout(() => {
           setIsLogin(true);
         }, 1500);
       }
 
-    } catch (error: any) {
+    } catch (error) {
       setFeedback({
         type: "error",
         message:
-          error.message || "Não foi possível concluir a autenticação.",
+          error instanceof Error ? error.message : "Não foi possível concluir a autenticação.",
       });
     } finally {
       setLoading(false);

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useDashboard } from "@/hooks/useDashboard";
-import { LogOut, ChevronDown, User } from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function UserMenu() {

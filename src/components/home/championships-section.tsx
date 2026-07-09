@@ -11,7 +11,7 @@ import {
 
 import Button from "@/components/ui/button";
 
-interface Championship {
+interface ChampionshipsSectionData {
   id: string;
   name: string;
   location: string;
@@ -21,7 +21,7 @@ interface Championship {
 
 export default function ChampionshipsSection() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [results, setResults] = useState<Championship[]>([]);
+  const [results, setResults] = useState<ChampionshipsSectionData[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -120,7 +120,7 @@ function LoadingState() {
   );
 }
 
-function ResultsList({ results }: { results: Championship[] }) {
+function ResultsList({ results }: { results: ChampionshipsSectionData[] }) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {results.map((championship) => (
@@ -164,7 +164,7 @@ function EmptyState({ search }: { search: string }) {
         <p className="mx-auto max-w-md text-xs leading-relaxed text-slate-500">
           Não encontramos nenhuma competição ativa ou finalizada com o termo{" "}
           <span className="font-semibold text-brand-accent">
-            "{search}"
+            &ldquo;{search}&rdquo;
           </span>{" "}
           na nossa base de dados.
         </p>

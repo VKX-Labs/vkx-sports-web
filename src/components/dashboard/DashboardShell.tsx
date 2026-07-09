@@ -1,9 +1,10 @@
 "use client";
 
+import { Loader2, Search } from "lucide-react";
+
 import { useDashboard } from "@/hooks/useDashboard";
 import Sidebar from "./Sidebar";
 import UserMenu from "./UserMenu";
-import { Loader2, Search } from "lucide-react";
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useDashboard();

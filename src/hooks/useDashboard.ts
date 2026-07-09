@@ -1,8 +1,9 @@
 "use client";
 
-import { useAuth } from "@/providers/auth-provider";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { useAuth } from "@/providers/auth-provider";
 
 export function useDashboard() {
   const { user, profile, loading, signOut } = useAuth();
