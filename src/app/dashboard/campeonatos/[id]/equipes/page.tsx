@@ -6,14 +6,15 @@ import { Shield, Plus, Search, Loader2 } from "lucide-react";
 import { Team } from "@/types/team";
 import { getTeams } from "@/services/teams/team-service";
 import TeamCard from "@/components/teams/TeamCard";
+import TeamForm from "@/components/teams/TeamForm";
 
 export default function EquipesPage() {
   const { id } = useParams();
   const [teams, setTeams] = useState<Team[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  
   async function loadTeams() {
     try {
       setLoading(true);
@@ -30,15 +31,13 @@ export default function EquipesPage() {
     if (id) loadTeams();
   }, [id]);
 
-  
-  const filteredTeams = teams.filter(team => 
+  const filteredTeams = teams.filter(team =>
     team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (team.city && team.city.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
     <div className="space-y-6">
-      {/* Topbar de Ações */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-5">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
@@ -50,7 +49,7 @@ export default function EquipesPage() {
 
         <button
           type="button"
-          onClick={() => alert("Aqui abriremos o Modal/Drawer do formulário no próximo passo!")}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/5"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
@@ -58,10 +57,9 @@ export default function EquipesPage() {
         </button>
       </div>
 
-      {/* Inputs de Pesquisa */}
       <div className="w-full max-w-md relative">
         <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input 
+        <input
           type="text"
           placeholder="Pesquisar clube por nome ou cidade..."
           value={searchTerm}
@@ -70,7 +68,6 @@ export default function EquipesPage() {
         />
       </div>
 
-      {/* Grid Reativo */}
       {loading ? (
         <div className="flex py-20 items-center justify-center gap-2">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
@@ -91,6 +88,13 @@ export default function EquipesPage() {
           ))}
         </div>
       )}
+
+      <TeamForm
+        championshipId={id as string}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadTeams}
+      />
     </div>
   );
 }
