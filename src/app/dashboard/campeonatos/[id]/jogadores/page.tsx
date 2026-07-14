@@ -3,6 +3,7 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { UserSquare2, Search, Loader2 } from "lucide-react";
+
 import { useChampionship } from "@/hooks/useChampionship";
 
 export default function JogadoresPage() {
@@ -13,7 +14,9 @@ export default function JogadoresPage() {
     return (
       <div className="flex py-20 items-center justify-center gap-2">
         <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-        <span className="text-sm text-slate-400 font-medium">Carregando jogadores...</span>
+        <span className="text-sm text-slate-400 font-medium">
+          Carregando jogadores...
+        </span>
       </div>
     );
   }
@@ -46,7 +49,9 @@ export default function JogadoresPage() {
 
       <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center max-w-xl mx-auto mt-6">
         <UserSquare2 className="w-8 h-8 text-slate-700 mx-auto mb-3" />
-        <h3 className="text-sm font-bold text-slate-300">Nenhum jogador cadastrado</h3>
+        <h3 className="text-sm font-bold text-slate-300">
+          Nenhum jogador cadastrado
+        </h3>
         <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
           Cadastre equipes primeiro para então adicionar seus jogadores.
         </p>

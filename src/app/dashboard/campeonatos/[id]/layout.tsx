@@ -4,8 +4,8 @@ import React from "react";
 import { useParams } from "next/navigation";
 
 import { useChampionship } from "@/hooks/useChampionship";
-import WorkspaceLoading from "@/components/workspace/Loading";
-import WorkspaceSidebar from "@/components/workspace/Sidebar";
+import WorkspaceSidebar from "@/features/championships/components/workspace/WorkspaceSidebar";
+import WorkspaceLoading from "@/features/championships/components/workspace/WorkspaceLoading";
 
 export default function ChampionshipWorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { id } = useParams();

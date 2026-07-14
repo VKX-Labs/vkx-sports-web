@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { Trophy, GitMerge, Layers, Loader2 } from "lucide-react";
 
 import { useChampionship } from "@/hooks/useChampionship";
-import TableStandings from "@/components/championship/TableStandings";
-import GroupStandings from "@/components/championship/GroupStandings";
-import BracketMatchPlay from "@/components/championship/BracketMatchPlay";
+import TableStandings from "@/features/standings/components/TableStandings";
+import GroupStandings from "@/features/standings/components/GroupStandings";
+import BracketMatchPlay from "@/features/standings/components/BracketMatchPlay";
 
 export default function ClassificacaoPage() {
   const { id } = useParams();

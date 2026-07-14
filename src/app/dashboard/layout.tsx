@@ -1,8 +1,4 @@
-import DashboardShell from "@/components/dashboard/DashboardShell";
-
-export const metadata = {
-  title: "Dashboard - VKX Sports",
-};
+import DashboardShell from "@/features/dashboard/components/DashboardShell";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return <DashboardShell>{children}</DashboardShell>;

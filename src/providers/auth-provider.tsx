@@ -1,21 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
-
-interface Profile {
-  full_name?: string;
-  avatar_url?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
-}
+import type { Profile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -23,6 +12,14 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
 });
+
+function extractProfile(user: User | null): Profile | null {
+  if (!user) return null;
+  return {
+    full_name: user.user_metadata?.full_name as string | undefined,
+    avatar_url: user.user_metadata?.avatar_url as string | undefined,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -35,20 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      setProfile({
-        full_name: currentUser?.user_metadata?.full_name as string | undefined,
-        avatar_url: currentUser?.user_metadata?.avatar_url as string | undefined,
-      });
+      setProfile(extractProfile(currentUser));
       setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      setProfile({
-        full_name: currentUser?.user_metadata?.full_name as string | undefined,
-        avatar_url: currentUser?.user_metadata?.avatar_url as string | undefined,
-      });
+      setProfile(extractProfile(currentUser));
       setLoading(false);
     });
 

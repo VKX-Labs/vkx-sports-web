@@ -1,14 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { deleteChampionshipById } from "@/repositories";
 
-export async function deleteChampionship(id: string) {
-  const { error } = await supabase
-    .from('championships')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return true;
+export async function deleteChampionship(id: string): Promise<boolean> {
+  return deleteChampionshipById(id);
 }

@@ -1,4 +1,10 @@
-import { supabase } from '@/lib/supabase';
+import { getAuthenticatedUserId } from "@/services/auth.service";
+import {
+  insertChampionship,
+  insertSeason,
+  deleteChampionshipByIdSafe,
+} from "@/repositories";
+import { generateSlug } from "@/utils";
 
 export interface CreateChampionshipInput {
   name: string;
@@ -7,74 +13,47 @@ export interface CreateChampionshipInput {
   city: string;
   state: string;
   tournament_type:
-    | 'PONTOS_CORRIDOS'
-    | 'MATA_MATA'
-    | 'GRUPOS_MATA_MATA'
-    | 'ELIMINATORIA_DUPLA'
-    | 'COPA'
-    | 'LIGA';
+    | "PONTOS_CORRIDOS"
+    | "MATA_MATA"
+    | "GRUPOS_MATA_MATA"
+    | "ELIMINATORIA_DUPLA"
+    | "COPA"
+    | "LIGA";
   max_teams?: number;
   start_date?: string;
   end_date?: string;
 }
 
-const INITIAL_SEASON_NAME = 'Temporada 2026';
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-');
-}
-
-async function getAuthenticatedUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    throw new Error('Usuário não autenticado no sistema.');
-  }
-
-  return user;
-}
+const INITIAL_SEASON_NAME = "Temporada 2026";
 
 export async function createChampionshipWithSeason(
   input: CreateChampionshipInput
 ) {
-  const user = await getAuthenticatedUser();
+  const userId = await getAuthenticatedUserId();
 
-  const { data: championship, error: championshipError } = await supabase
-    .from('championships')
-    .insert({
-      user_id: user.id,
+  let championship: Record<string, unknown>;
+  try {
+    championship = await insertChampionship({
+      user_id: userId,
       name: input.name,
       slug: generateSlug(input.name),
       description: input.description,
-    })
-    .select()
-    .single();
-
-  if (championshipError) {
-    if (championshipError.code === '23505') {
+    });
+  } catch (err: unknown) {
+    const error = err as { code?: string; message: string };
+    if (error.code === "23505") {
       throw new Error(
-        'Você já possui um campeonato cadastrado com este nome.'
+        "Você já possui um campeonato cadastrado com este nome."
       );
     }
-
-    throw new Error(championshipError.message);
+    throw new Error(error.message);
   }
 
-  const { data: season, error: seasonError } = await supabase
-    .from('seasons')
-    .insert({
+  try {
+    const season = await insertSeason({
       championship_id: championship.id,
       name: INITIAL_SEASON_NAME,
-      status: 'CONFIGURACAO',
+      status: "CONFIGURACAO",
       modality: input.modality,
       city: input.city,
       state: input.state.toUpperCase(),
@@ -82,21 +61,12 @@ export async function createChampionshipWithSeason(
       max_teams: input.max_teams ?? null,
       start_date: input.start_date ?? null,
       end_date: input.end_date ?? null,
-    })
-    .select()
-    .single();
+    });
 
-  if (seasonError) {
-    await supabase
-      .from('championships')
-      .delete()
-      .eq('id', championship.id);
-
-    throw new Error(seasonError.message);
+    return { championship, season };
+  } catch (err: unknown) {
+    await deleteChampionshipByIdSafe(championship.id as string);
+    const error = err as { message: string };
+    throw new Error(error.message);
   }
-
-  return {
-    championship,
-    season,
-  };
 }

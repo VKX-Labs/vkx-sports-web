@@ -1,13 +1,16 @@
 import { Globe } from "lucide-react";
 
-import Header from "@/components/dashboard/Header";
-import Section from "@/components/dashboard/Section";
-import EmptyState from "@/components/dashboard/EmptyState";
+import PageHeader from "@/components/shared/PageHeader";
+import Section from "@/components/shared/Section";
+import EmptyState from "@/components/shared/EmptyState";
 
 export default function OrganizadorPage() {
   return (
     <>
-      <Header title="Página do Organizador" description="Personalize sua página pública de organizador." />
+      <PageHeader
+        title="Página do Organizador"
+        description="Personalize sua página pública de organizador."
+      />
 
       <Section>
         <EmptyState
