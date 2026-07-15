@@ -1,68 +1,209 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { Shield, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Plus, UserMinus, Users } from "lucide-react";
 
-import { getTeams } from "@/services/teams/team-service";
-import type { Team } from "@/types/team";
+import { supabase } from "@/lib/supabase";
+import { PlayerService } from "@/services/players/player.service";
+import type { Player } from "@/types/player";
+import AddSquadPlayerModal from "@/components/forms/AddSquadPlayerModal";
 
-export default function TeamDetailPage() {
-  const { id, teamId } = useParams();
-  const [team, setTeam] = useState<Team | null>(null);
+interface TeamDetail {
+  id: string;
+  name: string;
+  initials: string;
+  logo_url: string | null;
+}
+
+export default function EquipeDetalhesPage() {
+  const router = useRouter();
+  const { id: championshipId, teamId } = useParams<{
+    id: string;
+    teamId: string;
+  }>();
+
+  const [team, setTeam] = useState<TeamDetail | null>(null);
+  const [squad, setSquad] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
+
+  const openModal = () => setIsAddPlayerOpen(true);
+  const closeModal = () => setIsAddPlayerOpen(false);
+
+  const loadTeamData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("id", teamId)
+        .single();
+
+      if (teamError) throw teamError;
+
+      setTeam(teamData);
+
+      const { data: squadData, error: squadError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("team_id", teamId)
+        .order("name");
+
+      if (squadError) throw squadError;
+
+      setSquad(squadData ?? []);
+    } catch (error) {
+      console.error("Erro ao carregar equipe:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [teamId]);
 
   useEffect(() => {
-    async function loadTeam() {
-      try {
-        setLoading(true);
-        const teams = await getTeams(id as string);
-        const found = teams.find((t) => t.id === teamId);
-        setTeam(found ?? null);
-      } catch (err) {
-        console.error("Erro ao carregar equipe:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
+    if (!teamId) return;
 
-    if (id && teamId) loadTeam();
-  }, [id, teamId]);
+    loadTeamData();
+  }, [teamId, loadTeamData]);
+
+  const handleRemoveFromTeam = async (playerId: string) => {
+    try {
+      await PlayerService.editPlayer(playerId, { team_id: null });
+      loadTeamData();
+    } catch {
+      alert("Erro ao remover atleta do time.");
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex py-20 items-center justify-center gap-2">
-        <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-        <span className="text-sm text-slate-400 font-medium">
-          Carregando equipe...
-        </span>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-500" />
       </div>
     );
   }
 
   if (!team) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center max-w-xl mx-auto mt-6">
-        <Shield className="w-8 h-8 text-slate-700 mx-auto mb-3" />
-        <h3 className="text-sm font-bold text-slate-300">
-          Equipe não encontrada
-        </h3>
-        <p className="text-xs text-slate-500 mt-1">
-          Esta equipe não existe ou foi removida.
-        </p>
+      <div className="py-12 text-center text-slate-400">
+        Equipe não encontrada.
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-bold text-white flex items-center gap-2">
-        <Shield className="w-5 h-5 text-emerald-500" />
-        {team.name}
-      </h2>
-      <p className="text-sm text-slate-400">
-        Detalhes da equipe e elenco de jogadores.
-      </p>
+      <button
+        onClick={() =>
+          router.push(`/dashboard/campeonatos/${championshipId}/equipes`)
+        }
+        className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar para Equipes
+      </button>
+
+      <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950 p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+            {team.logo_url ? (
+              <img
+                src={team.logo_url}
+                alt={team.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Users className="h-8 w-8 text-slate-600" />
+            )}
+          </div>
+
+          <div>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-white">
+              {team.name}
+
+              <span className="rounded-md border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-slate-400">
+                {team.initials}
+              </span>
+            </h1>
+
+            <p className="mt-0.5 text-xs text-slate-500">
+              {squad.length} atletas no elenco
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600"
+        >
+          <Plus className="h-4 w-4 stroke-[3]" />
+          Adicionar Atleta
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+          Elenco Atual
+        </h2>
+
+        {squad.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {squad.map((player) => (
+              <div
+                key={player.id}
+                className="group flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-3 transition hover:border-slate-700"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-800 bg-slate-900">
+                    {player.photo_url ? (
+                      <img
+                        src={player.photo_url}
+                        alt={player.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Users className="h-4 w-4 text-slate-600" />
+                    )}
+                  </div>
+
+                  <h3 className="text-xs font-bold text-white transition group-hover:text-emerald-400">
+                    {player.name}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => handleRemoveFromTeam(player.id)}
+                  title="Remover atleta"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <UserMinus className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/10 p-12 text-center">
+            <Users className="mx-auto mb-3 h-8 w-8 text-slate-600" />
+
+            <h3 className="text-xs font-bold text-white">
+              Nenhum atleta no elenco
+            </h3>
+
+            <p className="mt-1 text-[11px] text-slate-500">
+              Este time ainda não possui jogadores vinculados.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <AddSquadPlayerModal
+        championshipId={championshipId}
+        teamId={teamId}
+        isOpen={isAddPlayerOpen}
+        onClose={closeModal}
+        onSuccess={loadTeamData}
+      />
     </div>
   );
 }

@@ -10,13 +10,13 @@ import { uploadTeamLogo } from "@/lib/storage/upload-team-logo";
 
 const teamSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres"),
-  initials: z.string().max(3, "Máximo de 3 letras").transform(val => val.trim().toUpperCase()).optional().or(z.literal("")),
+  initials: z.string().max(3, "Máximo de 3 letras").optional().or(z.literal("")),
   city: z.string().optional().or(z.literal("")),
-  state: z.string().max(2, "Use apenas a sigla do estado").transform(val => val.trim().toUpperCase()).optional().or(z.literal("")),
+  state: z.string().max(2, "Use apenas a sigla do estado").optional().or(z.literal("")),
   manager_name: z.string().optional().or(z.literal("")),
   manager_phone: z.string().optional().or(z.literal("")),
-  kit_primary: z.string().default("#22C55E"),
-  kit_secondary: z.string().default("#0F172A"),
+  kit_primary: z.string(),
+  kit_secondary: z.string(),
 });
 
 type TeamFormValues = z.infer<typeof teamSchema>;
@@ -75,9 +75,19 @@ export default function TeamForm({ championshipId, isOpen, onClose, onSuccess }:
         badgeUrl = await uploadTeamLogo(imageFile);
       }
 
-      // IMPORTANTE: Enviamos exclusivamente 'name' e 'badge_url' para evitar qualquer erro de coluna inexistente no banco!
       await createTeam(championshipId, {
         name: data.name,
+        initials: data.initials || "",
+        city: data.city || "",
+        state: data.state || "",
+        country: "Brasil",
+        manager_name: data.manager_name || "",
+        manager_phone: data.manager_phone || "",
+        manager_email: "",
+        instagram: "",
+        description: "",
+        primary_kit_color: data.kit_primary,
+        secondary_kit_color: data.kit_secondary,
         badge_url: badgeUrl,
       });
 
