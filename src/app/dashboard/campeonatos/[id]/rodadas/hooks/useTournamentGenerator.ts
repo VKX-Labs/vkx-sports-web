@@ -1,0 +1,117 @@
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+import { MatchRepository } from "@/repositories/match.repository";
+
+export interface GeneratorOptions {
+  shuffle: boolean;
+  doubleRound: boolean;
+}
+
+export function useTournamentGenerator(championshipId: string) {
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [seasonId, setSeasonId] = useState<string | null>(null);
+  const [teamCount, setTeamCount] = useState(0);
+  const [hasRounds, setHasRounds] = useState(false);
+
+  const [options, setOptions] = useState<GeneratorOptions>({
+    shuffle: true,
+    doubleRound: false,
+  });
+
+  const init = useCallback(async () => {
+    if (!championshipId) return;
+
+    try {
+      setLoading(true);
+
+      
+      const { data: seasonData, error: seasonError } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("championship_id", championshipId)
+        .maybeSingle(); 
+
+      if (seasonError) {
+        console.error("Erro ao buscar temporada ativa no Supabase:", seasonError);
+        return;
+      }
+
+      
+      if (!seasonData) {
+        console.warn(`Nenhuma temporada ativa encontrada para o campeonato: ${championshipId}`);
+        setTeamCount(0);
+        return;
+      }
+
+      setSeasonId(seasonData.id);
+
+      
+      try {
+        const exists = await MatchRepository.hasGeneratedRounds(seasonData.id);
+        setHasRounds(exists);
+      } catch (err) {
+        console.error("Erro ao verificar rodadas geradas:", err);
+      }
+
+      
+      const { count, error: countError } = await supabase
+        .from("teams")
+        .select("id", { count: "exact", head: true })
+        .eq("season_id", seasonData.id);
+
+      if (countError) {
+        console.error("Erro ao contar equipes do campeonato:", countError);
+      } else {
+        setTeamCount(count ?? 0);
+      }
+
+    } catch (error) {
+      console.error("Erro geral na inicialização da página de rodadas:", error);
+    } finally {
+      
+      setLoading(false);
+    }
+  }, [championshipId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    init();
+  }, [championshipId, init]);
+
+  const generate = async () => {
+    if (!seasonId) {
+      alert("Nenhuma temporada ativa encontrada para este campeonato.");
+      return;
+    }
+    
+    if (teamCount < 2) {
+      alert("Você precisa cadastrar pelo menos 2 equipes para gerar a tabela de jogos!");
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      await MatchRepository.generateTournament(championshipId, seasonId, {
+        shuffle: options.shuffle,
+        doubleRound: options.doubleRound,
+      });
+      setHasRounds(true);
+      alert("Tabela de jogos gerada com sucesso!");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao gerar o campeonato.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return {
+    loading,
+    generating,
+    hasRounds,
+    teamCount,
+    options,
+    setOptions,
+    generate,
+  };
+}

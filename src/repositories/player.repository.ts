@@ -24,18 +24,16 @@ export class PlayerRepository {
       throw new Error(error.message);
     }
 
-    return (data ?? []).map((player: any) => ({
+    return (data ?? []).map((player) => ({
       ...player,
-      team_name: player.teams?.name ?? "Sem equipe",
-    }));
+      team_name: (player as Record<string, unknown> & { teams?: { name?: string } | null }).teams?.name ?? "Sem equipe",
+    })) as Player[];
   }
 
-  // Modificado para receber o championshipId e buscar a season_id correta no banco
   static async createPlayer(
     championshipId: string,
     player: CreatePlayerInput
   ): Promise<Player> {
-    // 1. Busca a temporada vinculada a este campeonato na tabela 'seasons'
     const { data: seasonData, error: seasonError } = await supabase
       .from("seasons")
       .select("id")
@@ -48,7 +46,6 @@ export class PlayerRepository {
       );
     }
 
-    // 2. Insere o jogador utilizando a season_id encontrada
     const { data, error } = await supabase
       .from("players")
       .insert({

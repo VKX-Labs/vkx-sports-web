@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Team } from "@/types/team";
+import type { Team, CreateTeamPayload } from "@/types/team";
 
 export async function findTeamsByChampionshipId(
   championshipId: string
@@ -34,7 +34,7 @@ export async function findTeamsByChampionshipId(
 }
 
 export async function insertTeam(
-  teamData: Record<string, unknown>
+  teamData: CreateTeamPayload
 ): Promise<Team> {
   const { data, error } = await supabase
     .from("teams")

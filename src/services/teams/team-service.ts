@@ -3,7 +3,7 @@ import {
   findSeasonByChampionshipId,
   insertTeam,
 } from "@/repositories";
-import type { Team } from "@/types/team";
+import type { Team, CreateTeamPayload } from "@/types/team";
 
 export async function getTeams(championshipId: string): Promise<Team[]> {
   return findTeamsByChampionshipId(championshipId);
@@ -11,7 +11,7 @@ export async function getTeams(championshipId: string): Promise<Team[]> {
 
 export async function createTeam(
   championshipId: string,
-  teamData: Omit<Team, "id" | "season_id" | "created_at">
+  teamData: Omit<CreateTeamPayload, "season_id">
 ): Promise<Team> {
   const season = await findSeasonByChampionshipId(championshipId);
 

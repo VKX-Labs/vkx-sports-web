@@ -86,10 +86,10 @@ export default function PlayerForm({ championshipId, isOpen, onClose, onSuccess 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm">
+      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md mx-auto shadow-2xl flex flex-col">
 
-        <div className="p-5 border-b border-slate-800/60 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-800/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User className="w-5 h-5 text-brand-accent" />
             <h2 className="text-base font-bold text-brand-textPrimary">Novo Jogador</h2>
@@ -99,7 +99,7 @@ export default function PlayerForm({ championshipId, isOpen, onClose, onSuccess 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmitForm)} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="p-4 sm:p-6 space-y-5">
 
           <div className="flex flex-col items-center justify-center space-y-2">
             <div

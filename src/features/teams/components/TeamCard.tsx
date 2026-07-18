@@ -33,9 +33,9 @@ export default function TeamCard({ team, championshipId }: TeamCardProps) {
             <h3 className="font-bold text-white text-base truncate group-hover:text-emerald-400 transition">
               {team.name}
             </h3>
-            {team.initials && (
+            {team.short_name && (
               <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-1.5 py-0.5 rounded">
-                {team.initials}
+                {team.short_name}
               </span>
             )}
           </div>
@@ -43,7 +43,6 @@ export default function TeamCard({ team, championshipId }: TeamCardProps) {
           <p className="text-xs text-slate-400 flex items-center gap-1">
             <MapPin className="w-3 h-3 text-slate-500" />
             {team.city || "Não informada"}
-            {team.state ? ` - ${team.state}` : ""}
           </p>
 
           <p className="text-xs text-slate-400 flex items-center gap-1 pt-1">

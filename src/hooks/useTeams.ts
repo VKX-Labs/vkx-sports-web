@@ -26,6 +26,7 @@ export function useTeams(championshipId: string) {
   }, [championshipId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (championshipId) loadTeams();
   }, [championshipId, loadTeams]);
 

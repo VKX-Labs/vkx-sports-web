@@ -2,21 +2,22 @@ export interface Team {
   id: string;
   season_id: string;
   name: string;
-  badge_url: string | null;
-  initials: string | null; 
+  short_name: string | null;
   city: string | null;
-  state: string | null;
-  country: string | null;
-  manager_name: string | null;
-  manager_phone: string | null;
-  manager_email: string | null;
-  instagram: string | null;
-  description: string | null;
-  primary_kit_color: string | null;
-  secondary_kit_color: string | null;
+  manager: string | null;
+  badge_url: string | null;
   created_at: string;
-  
+
   _count?: {
     players: number;
   };
 }
+
+export type CreateTeamPayload = {
+  season_id: string;
+  name: string;
+  short_name?: string | null;
+  city?: string | null;
+  manager?: string | null;
+  badge_url?: string | null;
+};

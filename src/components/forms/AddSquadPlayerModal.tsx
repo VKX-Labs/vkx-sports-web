@@ -21,7 +21,7 @@ export default function AddSquadPlayerModal({ championshipId, teamId, isOpen, on
 
   useEffect(() => {
     if (!isOpen || !championshipId) return;
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     PlayerService.listPlayers(championshipId)
       .then((data) => setPlayers(data.filter((p) => p.team_id !== teamId)))
@@ -49,10 +49,10 @@ export default function AddSquadPlayerModal({ championshipId, teamId, isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm">
+      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md mx-auto shadow-2xl flex flex-col max-h-[80vh]">
 
-        <div className="p-5 border-b border-slate-800/60 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b border-slate-800/60 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-brand-accent" />
             <h2 className="text-base font-bold text-brand-textPrimary">Adicionar ao Elenco</h2>

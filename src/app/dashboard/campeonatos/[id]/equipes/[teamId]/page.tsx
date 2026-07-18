@@ -12,8 +12,8 @@ import AddSquadPlayerModal from "@/components/forms/AddSquadPlayerModal";
 interface TeamDetail {
   id: string;
   name: string;
-  initials: string;
-  logo_url: string | null;
+  short_name: string | null;
+  badge_url: string | null;
 }
 
 export default function EquipeDetalhesPage() {
@@ -63,7 +63,7 @@ export default function EquipeDetalhesPage() {
 
   useEffect(() => {
     if (!teamId) return;
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTeamData();
   }, [teamId, loadTeamData]);
 
@@ -104,27 +104,29 @@ export default function EquipeDetalhesPage() {
         Voltar para Equipes
       </button>
 
-      <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950 p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-950 p-4 sm:p-6">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-            {team.logo_url ? (
+          <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shrink-0">
+            {team.badge_url ? (
               <img
-                src={team.logo_url}
+                src={team.badge_url}
                 alt={team.name}
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Users className="h-8 w-8 text-slate-600" />
+              <Users className="h-7 w-7 sm:h-8 sm:w-8 text-slate-600" />
             )}
           </div>
 
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-white">
-              {team.name}
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-lg sm:text-xl font-bold tracking-tight text-white">
+              <span className="truncate">{team.name}</span>
 
-              <span className="rounded-md border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-slate-400">
-                {team.initials}
-              </span>
+              {team.short_name && (
+                <span className="shrink-0 rounded-md border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-slate-400">
+                  {team.short_name}
+                </span>
+              )}
             </h1>
 
             <p className="mt-0.5 text-xs text-slate-500">
@@ -135,7 +137,7 @@ export default function EquipeDetalhesPage() {
 
         <button
           onClick={openModal}
-          className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600"
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600 shrink-0"
         >
           <Plus className="h-4 w-4 stroke-[3]" />
           Adicionar Atleta

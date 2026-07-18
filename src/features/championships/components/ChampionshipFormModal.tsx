@@ -54,7 +54,6 @@ export default function ChampionshipFormModal({
       onSuccess();
       onClose();
     } catch {
-      // Error is handled by the hook
     }
   };
 
@@ -63,8 +62,8 @@ export default function ChampionshipFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto p-4">
-      <div className="relative my-8 w-full max-w-2xl rounded-2xl border border-slate-800 bg-brand-card p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto p-4 sm:p-6">
+      <div className="relative my-8 w-full max-w-2xl mx-auto rounded-2xl border border-slate-800 bg-brand-card p-4 sm:p-6 shadow-2xl">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-brand-textSecondary transition hover:text-white"

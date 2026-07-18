@@ -11,19 +11,17 @@ export default function JogadoresPage() {
 
   return (
     <div className="space-y-6">
-      {/* CABEÇALHO COM O BOTÃO NOVO JOGADOR */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-brand-accent text-emerald-400" />
+            <Users className="w-6 h-6 text-emerald-400" />
             <h1 className="text-xl font-bold text-white tracking-tight">Jogadores</h1>
           </div>
           <p className="text-xs text-slate-400">
-            Cadastre e gerencie os jogadores das equipes de <span className="text-emerald-400 font-medium">Teste</span>.
+            Cadastre e gerencie os jogadores deste campeonato.
           </p>
         </div>
 
-        {/* BOTÃO ADICIONAR JOGADOR */}
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
@@ -33,7 +31,6 @@ export default function JogadoresPage() {
         </button>
       </div>
 
-      {/* ÁREA DE BUSCA */}
       <div className="w-full">
         <input
           type="text"
@@ -42,8 +39,7 @@ export default function JogadoresPage() {
         />
       </div>
 
-      {/* ESTADO VAZIO (EMPTY STATE) */}
-      <div className="border border-dashed border-slate-800 rounded-2xl p-12 flex flex-col items-center justify-center text-center bg-slate-950/20">
+      <div className="border border-dashed border-slate-800 rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-slate-950/20">
         <div className="w-12 h-12 rounded-xl bg-slate-905 border border-slate-800 flex items-center justify-center mb-4 text-slate-500">
           <Users className="w-6 h-6" />
         </div>

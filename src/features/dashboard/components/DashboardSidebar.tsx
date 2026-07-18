@@ -20,13 +20,17 @@ const MENU_ITEMS = [
   { id: "assinatura", label: "Assinatura", href: "/dashboard/assinatura", icon: CreditCard },
 ];
 
-export default function DashboardSidebar() {
+interface DashboardSidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function DashboardSidebar({ onNavigate }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-brand-dark border-r border-slate-800 flex flex-col justify-between shrink-0">
+    <aside className="w-64 h-full bg-brand-dark flex flex-col justify-between shrink-0">
       <div>
-        <div className="p-5 border-b border-slate-800/60">
+        <div className="p-5 border-b border-slate-800/60 hidden md:block">
           <Link href="/dashboard" className="text-lg font-black tracking-widest text-white">
             VKX<span className="text-brand-accent">SPORTS</span>
           </Link>
@@ -44,6 +48,7 @@ export default function DashboardSidebar() {
               <Link
                 key={item.id}
                 href={item.href}
+                onClick={onNavigate}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
                   isActive
                     ? "bg-brand-accent text-slate-950 font-bold shadow-lg shadow-brand-accent/10"
