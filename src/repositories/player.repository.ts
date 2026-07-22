@@ -3,12 +3,20 @@ import {
   Player,
   CreatePlayerInput,
   UpdatePlayerInput,
-} from "../types/player";
+} from "@/types/player";
 
 export class PlayerRepository {
   static async getPlayersBySeason(
-    seasonId: string
+    championshipOrSeasonId: string
   ): Promise<Player[]> {
+    const { data: seasonData } = await supabase
+      .from("seasons")
+      .select("id")
+      .eq("championship_id", championshipOrSeasonId)
+      .maybeSingle();
+
+    const targetSeasonId = seasonData?.id || championshipOrSeasonId;
+
     const { data, error } = await supabase
       .from("players")
       .select(`
@@ -17,7 +25,7 @@ export class PlayerRepository {
           name
         )
       `)
-      .eq("season_id", seasonId)
+      .eq("season_id", targetSeasonId)
       .order("name", { ascending: true });
 
     if (error) {
@@ -26,7 +34,10 @@ export class PlayerRepository {
 
     return (data ?? []).map((player) => ({
       ...player,
-      team_name: (player as Record<string, unknown> & { teams?: { name?: string } | null }).teams?.name ?? "Sem equipe",
+      team_name:
+        (player as Record<string, unknown> & {
+          teams?: { name?: string } | null;
+        }).teams?.name ?? "Sem equipe",
     })) as Player[];
   }
 
@@ -42,7 +53,8 @@ export class PlayerRepository {
 
     if (seasonError || !seasonData) {
       throw new Error(
-        seasonError?.message ?? "Não foi possível encontrar uma temporada ativa para este campeonato."
+        seasonError?.message ??
+          "Não foi possível encontrar uma temporada ativa para este campeonato."
       );
     }
 
@@ -51,7 +63,7 @@ export class PlayerRepository {
       .insert({
         season_id: seasonData.id,
         team_id: player.team_id ?? null,
-        name: player.name,
+        name: player.name.trim(),
         photo_url: player.photo_url ?? null,
       })
       .select()
@@ -66,15 +78,11 @@ export class PlayerRepository {
 
   static async updatePlayer(
     playerId: string,
-    player: UpdatePlayerInput
+    player: Partial<UpdatePlayerInput>
   ): Promise<Player> {
     const { data, error } = await supabase
       .from("players")
-      .update({
-        name: player.name,
-        team_id: player.team_id,
-        photo_url: player.photo_url,
-      })
+      .update(player)
       .eq("id", playerId)
       .select()
       .single();

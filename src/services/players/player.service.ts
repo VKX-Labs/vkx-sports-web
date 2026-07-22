@@ -7,21 +7,28 @@ import type {
 } from "@/types/player";
 
 export class PlayerService {
-  static async listPlayers(
-    seasonId: string
-  ): Promise<Player[]> {
+  static async listPlayers(seasonId: string): Promise<Player[]> {
     return PlayerRepository.getPlayersBySeason(seasonId);
   }
 
   static async registerPlayer(
-    seasonId: string,
+    championshipId: string,
     input: CreatePlayerInput
   ): Promise<Player> {
     if (!input.name.trim()) {
       throw new Error("O nome do jogador é obrigatório.");
     }
 
-    return PlayerRepository.createPlayer(seasonId, input);
+    return PlayerRepository.createPlayer(championshipId, input);
+  }
+
+  static async transferPlayerToTeam(
+    playerId: string,
+    teamId: string | null
+  ): Promise<Player> {
+    return PlayerRepository.updatePlayer(playerId, {
+      team_id: teamId,
+    });
   }
 
   static async editPlayer(
@@ -31,15 +38,11 @@ export class PlayerService {
     return PlayerRepository.updatePlayer(playerId, input);
   }
 
-  static async removePlayer(
-    playerId: string
-  ): Promise<void> {
+  static async removePlayer(playerId: string): Promise<void> {
     return PlayerRepository.deletePlayer(playerId);
   }
 
-  static async uploadPhoto(
-    file: File
-  ): Promise<string> {
+  static async uploadPhoto(file: File): Promise<string> {
     const fileExt = file.name.split(".").pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
@@ -52,9 +55,7 @@ export class PlayerService {
       });
 
     if (uploadError) {
-      throw new Error(
-        `Erro ao fazer upload da foto: ${uploadError.message}`
-      );
+      throw new Error(`Erro ao fazer upload da foto: ${uploadError.message}`);
     }
 
     const { data } = supabase.storage
@@ -62,9 +63,7 @@ export class PlayerService {
       .getPublicUrl(filePath);
 
     if (!data.publicUrl) {
-      throw new Error(
-        "Não foi possível gerar a URL pública da foto."
-      );
+      throw new Error("Não foi possível gerar a URL pública da foto.");
     }
 
     return data.publicUrl;
