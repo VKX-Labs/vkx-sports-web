@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { PlayerRepository } from "@/repositories/player.repository";
 import type {
   Player,
+  PlayerStats,
   CreatePlayerInput,
   UpdatePlayerInput,
 } from "@/types/player";
@@ -9,6 +10,10 @@ import type {
 export class PlayerService {
   static async listPlayers(seasonId: string): Promise<Player[]> {
     return PlayerRepository.getPlayersBySeason(seasonId);
+  }
+
+  static async getPlayer(playerId: string): Promise<Player | null> {
+    return PlayerRepository.getPlayerById(playerId);
   }
 
   static async registerPlayer(
@@ -67,5 +72,9 @@ export class PlayerService {
     }
 
     return data.publicUrl;
+  }
+
+  static async getPlayerStats(playerId: string): Promise<PlayerStats> {
+    return PlayerRepository.getPlayerDerivedStats(playerId);
   }
 }
