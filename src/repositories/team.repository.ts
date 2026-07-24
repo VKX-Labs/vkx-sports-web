@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Team, CreateTeamPayload } from "@/types/team";
+import type { Team, CreateTeamPayload, UpdateTeamPayload } from "@/types/team";
 
 export async function findTeamsByChampionshipId(
   championshipId: string
@@ -39,6 +39,21 @@ export async function insertTeam(
   const { data, error } = await supabase
     .from("teams")
     .insert(teamData)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Team;
+}
+
+export async function updateTeamById(
+  teamId: string,
+  teamData: UpdateTeamPayload
+): Promise<Team> {
+  const { data, error } = await supabase
+    .from("teams")
+    .update(teamData)
+    .eq("id", teamId)
     .select()
     .single();
 

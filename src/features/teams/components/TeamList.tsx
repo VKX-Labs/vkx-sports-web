@@ -7,18 +7,27 @@ import { Shield, Plus, Search, Loader2 } from "lucide-react";
 import { useTeams } from "@/hooks/useTeams";
 import TeamCard from "@/features/teams/components/TeamCard";
 import TeamForm from "@/components/forms/TeamForm";
+import EditTeamModal from "@/components/forms/EditTeamModal";
+import type { Team } from "@/types/team";
 
 export default function TeamList() {
   const { id } = useParams();
   const { teams, loading, refresh } = useTeams(id as string);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const filteredTeams = teams.filter(
     (team) =>
       team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (team.city && team.city.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleOpenEdit = (team: Team) => {
+    setEditingTeam(team);
+    setIsEditModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -76,7 +85,12 @@ export default function TeamList() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTeams.map((team) => (
-            <TeamCard key={team.id} team={team} championshipId={id as string} />
+            <TeamCard
+              key={team.id}
+              team={team}
+              championshipId={id as string}
+              onEdit={handleOpenEdit}
+            />
           ))}
         </div>
       )}
@@ -85,6 +99,16 @@ export default function TeamList() {
         championshipId={id as string}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onSuccess={refresh}
+      />
+
+      <EditTeamModal
+        team={editingTeam}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingTeam(null);
+        }}
         onSuccess={refresh}
       />
     </div>

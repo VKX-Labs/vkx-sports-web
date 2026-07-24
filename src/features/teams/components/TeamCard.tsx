@@ -8,9 +8,10 @@ import type { Team } from "@/types/team";
 interface TeamCardProps {
   team: Team;
   championshipId: string;
+  onEdit: (team: Team) => void;
 }
 
-export default function TeamCard({ team, championshipId }: TeamCardProps) {
+export default function TeamCard({ team, championshipId, onEdit }: TeamCardProps) {
   const playerLength = team._count?.players || 0;
 
   return (
@@ -56,7 +57,8 @@ export default function TeamCard({ team, championshipId }: TeamCardProps) {
       <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-slate-800/60">
         <button
           type="button"
-          className="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition border border-slate-800"
+          onClick={() => onEdit(team)}
+          className="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition border border-slate-800 cursor-pointer"
         >
           Editar
         </button>

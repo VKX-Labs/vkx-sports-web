@@ -21,3 +21,11 @@ export type CreateTeamPayload = {
   manager?: string | null;
   badge_url?: string | null;
 };
+
+export type UpdateTeamPayload = {
+  name?: string;
+  short_name?: string | null;
+  city?: string | null;
+  manager?: string | null;
+  badge_url?: string | null;
+};
