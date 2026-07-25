@@ -7,6 +7,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     storageKey: "vkx-sports-session",
-    storage: typeof window !== "undefined" ? window.sessionStorage : undefined, // Altera de localStorage para sessionStorage
+    storage: typeof window !== "undefined" ? window.sessionStorage : undefined,
   },
 });

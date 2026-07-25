@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { MatchService, MatchEventItem, SimplePlayer } from "@/services/matchService";
 import { MatchScoreCard } from "@/components/match/MatchScoreCard";
@@ -29,7 +29,7 @@ export default function PartidaDetalhePage() {
       try {
         setLoading(true);
         const data = await MatchService.getMatchDetails(matchId);
-        
+
         setMatchData(data.match);
         setHomeScore(data.match.home_score ?? 0);
         setAwayScore(data.match.away_score ?? 0);
@@ -37,7 +37,7 @@ export default function PartidaDetalhePage() {
         setPlayersAway(data.awayPlayers);
         setEvents(data.events);
       } catch (err) {
-        console.error("Erro ao carregar confronto:", err);
+        console.error("Erro ao carregar partida:", err);
       } finally {
         setLoading(false);
       }
@@ -73,25 +73,45 @@ export default function PartidaDetalhePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-slate-400 gap-2">
-        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-        Carregando dados do confronto...
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-zinc-500 gap-3">
+        <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+        <span className="text-xs font-mono tracking-wide">Carregando dados da partida...</span>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12 text-slate-100">
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" /> Voltar para Rodadas
-      </button>
+    <div className="max-w-6xl mx-auto space-y-8 pb-16 text-zinc-100">
+      
+      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <button 
+            onClick={() => router.back()}
+            className="hover:text-zinc-200 transition-colors"
+          >
+            Rodadas
+          </button>
+          <span className="text-zinc-600">/</span>
+          <span className="text-emerald-400 font-semibold">Match Center</span>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="h-10 px-5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+        >
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4" />
+          )}
+          {saving ? "Salvando..." : "Finalizar & Salvar Súmula"}
+        </button>
+      </div>
 
       <MatchScoreCard
-        homeTeamName={matchData.home_team.name}
-        awayTeamName={matchData.away_team.name}
+        homeTeam={matchData?.home_team}
+        awayTeam={matchData?.away_team}
         homeScore={homeScore}
         awayScore={awayScore}
         setHomeScore={setHomeScore}
@@ -100,8 +120,8 @@ export default function PartidaDetalhePage() {
       />
 
       <MatchEventsSection
-        homeTeam={matchData.home_team}
-        awayTeam={matchData.away_team}
+        homeTeam={matchData?.home_team}
+        awayTeam={matchData?.away_team}
         homePlayers={playersHome}
         awayPlayers={playersAway}
         events={events}
@@ -109,16 +129,6 @@ export default function PartidaDetalhePage() {
         onRemoveEvent={(id) => setEvents(events.filter((e) => e.id !== id))}
       />
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/10 flex items-center gap-2"
-        >
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {saving ? "Salvando no Banco..." : "Salvar e Atualizar Estatísticas"}
-        </button>
-      </div>
     </div>
   );
 }

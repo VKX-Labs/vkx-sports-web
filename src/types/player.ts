@@ -19,7 +19,7 @@ export interface PlayerStats {
   yellow_cards: number;
   red_cards: number;
   saves: number;
-  rating: number; // Nota média
+  rating: number;
 }
 
 export interface CreatePlayerInput {

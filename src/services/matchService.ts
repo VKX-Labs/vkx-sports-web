@@ -12,6 +12,7 @@ export interface MatchEventItem {
   player_id?: string | null;
   assist_player_id?: string | null;
   event_type: EventType;
+  minute?: string;
 }
 
 export const MatchService = {
@@ -25,8 +26,8 @@ export const MatchService = {
     if (matchError) throw matchError;
 
     const [homeTeamRes, awayTeamRes] = await Promise.all([
-      supabase.from("teams").select("id, name").eq("id", match.home_team_id).single(),
-      supabase.from("teams").select("id, name").eq("id", match.away_team_id).single(),
+      supabase.from("teams").select("id, name, badge_url").eq("id", match.home_team_id).single(),
+      supabase.from("teams").select("id, name, badge_url").eq("id", match.away_team_id).single(),
     ]);
 
     const fullMatch = {
@@ -51,6 +52,7 @@ export const MatchService = {
       player_id: e.player_id,
       assist_player_id: e.assist_player_id,
       event_type: e.type,
+      minute: e.minute,
     }));
 
     return {
@@ -87,6 +89,7 @@ export const MatchService = {
         player_id: e.player_id || null,
         assist_player_id: e.assist_player_id || null,
         type: e.event_type,
+        minute: e.minute || null,
       }));
 
       const { error: eventsError } = await supabase
