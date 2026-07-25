@@ -111,7 +111,6 @@ export default function EditTeamModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm">
       <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col scrollbar-none">
         
-        {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-800/60 flex items-center justify-between sticky top-0 bg-brand-dark z-10">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-brand-accent" />
@@ -126,7 +125,6 @@ export default function EditTeamModal({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onSubmitForm)} className="p-4 sm:p-6 space-y-5 flex-1">
           
           <div className="flex flex-col sm:flex-row gap-5 items-center bg-slate-900/30 p-4 rounded-xl border border-slate-800/50">

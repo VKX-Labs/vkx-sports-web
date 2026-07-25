@@ -75,6 +75,29 @@ export class PlayerService {
   }
 
   static async getPlayerStats(playerId: string): Promise<PlayerStats> {
-    return PlayerRepository.getPlayerDerivedStats(playerId);
+    const { data: events, error } = await supabase
+      .from("match_events")
+      .select("*")
+      .eq("player_id", playerId);
+
+    const eventList = events || [];
+
+    const uniqueMatches = new Set(eventList.map((e) => e.match_id)).size;
+
+    const countType = (typeNames: string[]) =>
+      eventList.filter((e) => {
+        const val = String(e.type || e.event_type || "").trim().toUpperCase();
+        return typeNames.some((t) => val === t.toUpperCase());
+      }).length;
+
+    return {
+      matches: uniqueMatches,
+      goals: countType(["GOAL", "GOL"]),
+      assists: countType(["ASSIST", "ASSISTENCIA", "ASSISTÊNCIA"]),
+      yellow_cards: countType(["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"]),
+      red_cards: countType(["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"]),
+      saves: countType(["SAVE", "DEFESA"]),
+      rating: 0.0,
+    };
   }
 }

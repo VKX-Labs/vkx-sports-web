@@ -136,34 +136,49 @@ export class PlayerRepository {
   }
 
   static async getPlayerDerivedStats(playerId: string): Promise<PlayerStats> {
-    const { data: events, error } = await supabase
-      .from("match_events")
-      .select("event_type")
-      .eq("player_id", playerId);
-
-    // Retorno padrão inicial (tudo em zero caso não haja eventos ou aconteça erro)
     const initialStats: PlayerStats = {
       matches: 0,
       goals: 0,
       assists: 0,
       yellow_cards: 0,
       red_cards: 0,
-      minutes_played: 0,
       saves: 0,
+      rating: 0.0,
     };
+
+    const { data: events, error } = await supabase
+      .from("match_events")
+      .select("event_type, player_id, assist_player_id, goalkeeper_id, rating")
+      .or(`player_id.eq.${playerId},assist_player_id.eq.${playerId},goalkeeper_id.eq.${playerId}`);
 
     if (error || !events || events.length === 0) {
       return initialStats;
     }
 
+    const goals = events.filter((e) => e.event_type === "GOAL" && e.player_id === playerId).length;
+    const assists = events.filter(
+      (e) => e.event_type === "ASSIST" || e.assist_player_id === playerId
+    ).length;
+    const yellow_cards = events.filter((e) => e.event_type === "YELLOW_CARD" && e.player_id === playerId).length;
+    const red_cards = events.filter((e) => e.event_type === "RED_CARD" && e.player_id === playerId).length;
+    const saves = events.filter((e) => e.event_type === "SAVE" && e.goalkeeper_id === playerId).length;
+
+    const ratedEvents = events.filter((e) => e.rating !== null && e.rating !== undefined);
+    let rating = 0.0;
+
+    if (ratedEvents.length > 0) {
+      const totalRating = ratedEvents.reduce((acc, curr) => acc + (Number(curr.rating) || 0), 0);
+      rating = Number((totalRating / ratedEvents.length).toFixed(1));
+    }
+
     return {
       matches: 0,
-      goals: events.filter((e) => e.event_type === "GOAL").length,
-      assists: events.filter((e) => e.event_type === "ASSIST").length,
-      yellow_cards: events.filter((e) => e.event_type === "YELLOW_CARD").length,
-      red_cards: events.filter((e) => e.event_type === "RED_CARD").length,
-      saves: events.filter((e) => e.event_type === "SAVE").length,
-      minutes_played: 0,
+      goals,
+      assists,
+      yellow_cards,
+      red_cards,
+      saves,
+      rating,
     };
   }
 }

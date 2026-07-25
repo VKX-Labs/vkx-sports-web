@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Shield } from "lucide-react";
+import { useRouter, useParams } from "next/navigation";
 
 interface Team {
   id: string;
@@ -23,6 +24,10 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match }: MatchCardProps) {
+  const router = useRouter();
+  const params = useParams();
+  const championshipId = params?.id;
+
   const home = match.home_team || match.homeTeam;
   const away = match.away_team || match.awayTeam;
 
@@ -31,38 +36,68 @@ export function MatchCard({ match }: MatchCardProps) {
 
   const renderBadge = (url: string | null | undefined) => {
     if (url) {
-      return <img src={url} alt="Escudo do time" className="w-8 h-8 object-contain" />;
+      return <img src={url} alt="Escudo" className="w-8 h-8 object-contain" />;
     }
     return <Shield className="w-8 h-8 text-slate-500 opacity-60" />;
   };
 
+  const handleCardClick = () => {
+    if (championshipId && match.id) {
+      router.push(`/dashboard/campeonatos/${championshipId}/rodadas/${match.id}`);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      scheduled: "Agendado",
+      AGENDADO: "Agendado",
+      finished: "Finalizado",
+      FINALIZADO: "Finalizado",
+      in_progress: "Em Andamento"
+    };
+    return map[status] || status;
+  };
+
+  const isFinished = match.status === "finished" || match.status === "FINALIZADO";
+
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-md hover:border-slate-700 transition-all">
+    <div
+      onClick={handleCardClick}
+      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
+    >
       <div className="flex items-center gap-3 flex-1 justify-end text-right">
-        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px]">
+        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px] group-hover:text-emerald-400 transition-colors">
           {homeName}
         </span>
-        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0">
+        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
           {renderBadge(home?.badge_url)}
         </div>
       </div>
 
       <div className="flex flex-col items-center justify-center px-4 min-w-[100px]">
-        <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono text-base font-bold text-slate-100 shadow-inner">
-          <span>{match.home_score !== null ? match.home_score : "-"}</span>
+        <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
+          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
+            {match.home_score !== null ? match.home_score : "-"}
+          </span>
           <span className="text-slate-600 text-xs">:</span>
-          <span>{match.away_score !== null ? match.away_score : "-"}</span>
+          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
+            {match.away_score !== null ? match.away_score : "-"}
+          </span>
         </div>
-        <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1.5 text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-900/50">
-          {match.status === "scheduled" || match.status === "AGENDADO" ? "Agendado" : match.status}
+        <span className={`text-[10px] font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded border ${
+          isFinished 
+            ? "text-emerald-400 bg-emerald-950/40 border-emerald-900/50" 
+            : "text-slate-400 bg-slate-800/60 border-slate-700"
+        }`}>
+          {getStatusLabel(match.status)}
         </span>
       </div>
 
       <div className="flex items-center gap-3 flex-1 justify-start text-left">
-        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0">
+        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
           {renderBadge(away?.badge_url)}
         </div>
-        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px]">
+        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px] group-hover:text-emerald-400 transition-colors">
           {awayName}
         </span>
       </div>

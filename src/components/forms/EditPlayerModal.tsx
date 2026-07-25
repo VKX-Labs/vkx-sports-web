@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { X, Upload, Loader2, User, Trophy, Shield } from "lucide-react";
+import { X, Upload, Loader2, User, Trophy, Shield, Star } from "lucide-react";
 import { PlayerService } from "@/services/players/player.service";
 import type { Player, UpdatePlayerInput, PlayerStats } from "@/types/player";
 import type { Team } from "@/types/team";
@@ -35,39 +35,42 @@ export default function EditPlayerModal({
     yellow_cards: 0,
     red_cards: 0,
     saves: 0,
+    rating: 0.0,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchStats = async (playerId: string) => {
+    try {
+      setLoadingStats(true);
+      const data = await PlayerService.getPlayerStats(playerId);
+      setStats(data);
+    } catch (error) {
+      console.error("Erro ao carregar estatísticas:", error);
+      setStats({
+        matches: 0,
+        goals: 0,
+        assists: 0,
+        yellow_cards: 0,
+        red_cards: 0,
+        saves: 0,
+        rating: 0.0,
+      });
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   useEffect(() => {
-    if (player) {
+    if (player && isOpen) {
       setName(player.name || "");
       setTeamId(player.team_id || "");
       setImagePreview(player.photo_url || null);
       setImageFile(null);
 
-      const fetchStats = async () => {
-        try {
-          setLoadingStats(true);
-          const data = await PlayerService.getPlayerStats(player.id);
-          setStats(data);
-        } catch {
-          setStats({
-            matches: 0,
-            goals: 0,
-            assists: 0,
-            yellow_cards: 0,
-            red_cards: 0,
-            saves: 0,
-          });
-        } finally {
-          setLoadingStats(false);
-        }
-      };
-
-      fetchStats();
+      fetchStats(player.id);
     }
-  }, [player]);
+  }, [player, isOpen]);
 
   if (!isOpen || !player) return null;
 
@@ -173,10 +176,17 @@ export default function EditPlayerModal({
                 <Trophy className="w-3.5 h-3.5 text-brand-accent" />
                 Estatísticas Temporada
               </label>
-              {loadingStats && <Loader2 className="w-3 h-3 animate-spin text-brand-accent" />}
+              {loadingStats && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-accent" />}
             </div>
 
             <div className="grid grid-cols-3 gap-2 bg-slate-900/40 p-3 rounded-xl border border-slate-800/60">
+              <div className="bg-slate-950/60 p-2 rounded-lg text-center border border-slate-850">
+                <span className="block text-[10px] font-medium text-slate-400">Nota Média</span>
+                <span className="text-sm font-black text-amber-300 flex items-center justify-center gap-1">
+                  <Star className="w-3 h-3 fill-amber-300 stroke-amber-300 inline" />
+                  {(stats.rating || 0).toFixed(1)}
+                </span>
+              </div>
               <div className="bg-slate-950/60 p-2 rounded-lg text-center border border-slate-850">
                 <span className="block text-[10px] font-medium text-slate-400">Jogos</span>
                 <span className="text-sm font-black text-white">{stats.matches}</span>
@@ -197,12 +207,10 @@ export default function EditPlayerModal({
                 </span>
               </div>
               <div className="bg-slate-950/60 p-2 rounded-lg text-center border border-slate-850">
-                <span className="block text-[10px] font-medium text-slate-400">Amarelos</span>
-                <span className="text-sm font-black text-amber-400">{stats.yellow_cards}</span>
-              </div>
-              <div className="bg-slate-950/60 p-2 rounded-lg text-center border border-slate-850">
-                <span className="block text-[10px] font-medium text-slate-400">Vermelhos</span>
-                <span className="text-sm font-black text-rose-500">{stats.red_cards}</span>
+                <span className="block text-[10px] font-medium text-slate-400">Cartões</span>
+                <span className="text-sm font-black text-slate-300">
+                  <span className="text-amber-400">{stats.yellow_cards}</span> / <span className="text-rose-500">{stats.red_cards}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -217,8 +225,8 @@ export default function EditPlayerModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
-              placeholder="Ex: Cristiano Ronaldo"
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent"
+              placeholder="Ex: Lamine Yamal"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent transition"
             />
           </div>
 
@@ -230,7 +238,7 @@ export default function EditPlayerModal({
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               disabled={loading}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent transition"
             >
               <option value="">Sem equipe (Agente Livre)</option>
               {teams.map((t) => (

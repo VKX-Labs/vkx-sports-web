@@ -1,0 +1,25 @@
+export type EventType = 
+  | "GOAL" 
+  | "ASSIST" 
+  | "YELLOW_CARD" 
+  | "RED_CARD" 
+  | "SAVE" 
+  | "SUBSTITUTION" 
+  | "PENALTY" 
+  | "FOUL" 
+  | "CORNER" 
+  | "WO";
+
+export interface MatchEvent {
+  id: string;
+  match_id: string;
+  team_id: string;
+  player_id?: string | null;
+  assist_player_id?: string | null;
+  goalkeeper_id?: string | null;
+  event_type: EventType;
+  minute?: number | null;
+  rating?: number | null;
+  observation?: string | null;
+  created_at: string;
+}
