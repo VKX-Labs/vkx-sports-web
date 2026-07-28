@@ -1,7 +1,12 @@
 import { supabase } from "@/lib/supabase";
-import { generateRoundRobin, GenerationTeam } from "@/utils/generators/round-robin";
 import type { Match, MatchEventInput } from "@/types/match";
 import type { Player } from "@/types/player";
+import {
+  TournamentGeneratorRepository,
+  GenerateTournamentOptions,
+} from "./tournament-generator.repository";
+
+export type { GenerateTournamentOptions };
 
 export const MatchRepository = {
   async hasGeneratedRounds(seasonId: string): Promise<boolean> {
@@ -16,81 +21,39 @@ export const MatchRepository = {
   async generateTournament(
     championshipId: string,
     seasonId: string,
-    options: { shuffle?: boolean; doubleRound?: boolean } = {}
+    options: GenerateTournamentOptions = {}
   ) {
-    const { data: teams, error: teamsError } = await supabase
-      .from("teams")
-      .select("id, name")
-      .eq("season_id", seasonId);
+    return TournamentGeneratorRepository.generateTournament(championshipId, seasonId, options);
+  },
 
-    if (teamsError) {
-      throw new Error(`Erro ao buscar equipes: ${teamsError.message}`);
-    }
+  async generateKnockoutTournament(
+    seasonId: string,
+    options: GenerateTournamentOptions = {}
+  ) {
+    return TournamentGeneratorRepository.generateKnockoutTournament(seasonId, options);
+  },
 
-    if (!teams || teams.length < 2) {
-      throw new Error(
-        "É necessário cadastrar pelo menos 2 equipes para gerar confrontos."
-      );
-    }
+  async generateRoundRobinTournament(
+    seasonId: string,
+    options: GenerateTournamentOptions = {}
+  ) {
+    return TournamentGeneratorRepository.generateRoundRobinTournament(seasonId, options);
+  },
 
-    const { error: deleteError } = await supabase
-      .from("rounds")
-      .delete()
-      .eq("season_id", seasonId);
+  async getPlayoffMatches(seasonId: string): Promise<Match[]> {
+    const { data, error } = await supabase
+      .from("matches")
+      .select(`
+        *,
+        home_team:teams!home_team_id(id, name, badge_url),
+        away_team:teams!away_team_id(id, name, badge_url)
+      `)
+      .eq("season_id", seasonId)
+      .not("phase", "is", null)
+      .order("bracket_position", { ascending: true });
 
-    if (deleteError) {
-      throw new Error(
-        `Erro ao limpar rodadas anteriores: ${deleteError.message}`
-      );
-    }
-
-    const generatedRounds = generateRoundRobin(
-      teams.map<GenerationTeam>(({ id, name }) => ({ id, name })),
-      options
-    );
-
-    for (const round of generatedRounds) {
-      const { data: insertedRound, error: roundError } = await supabase
-        .from("rounds")
-        .insert({
-          season_id: seasonId,
-          name: `${round.number}ª Rodada`,
-          round_number: round.number,
-        })
-        .select()
-        .single();
-
-      if (roundError || !insertedRound) {
-        throw new Error(`Erro ao criar a rodada ${round.number}`);
-      }
-
-      const matchesToInsert = round.matches
-        .filter(
-          (match) => match.home_team_id != null && match.away_team_id != null
-        )
-        .map((match) => ({
-          home_team_id: match.home_team_id,
-          away_team_id: match.away_team_id,
-          round_id: insertedRound.id,
-          status: "scheduled",
-        }));
-
-      if (!matchesToInsert.length) {
-        continue;
-      }
-
-      const { error: matchesError } = await supabase
-        .from("matches")
-        .insert(matchesToInsert);
-
-      if (matchesError) {
-        throw new Error(
-          `Erro ao salvar os jogos da rodada ${round.number}: ${matchesError.message}`
-        );
-      }
-    }
-
-    return true;
+    if (error) throw new Error(`Erro ao carregar chaveamento: ${error.message}`);
+    return data as Match[];
   },
 
   async getMatchesByRound(roundId: string): Promise<Match[]> {
@@ -119,18 +82,25 @@ export const MatchRepository = {
   },
 
   async updateMatchScore(
-    matchId: string, 
-    homeScore: number, 
-    awayScore: number, 
-    status: string = "finished"
+    matchId: string,
+    homeScore: number,
+    awayScore: number,
+    status: string = "finished",
+    winnerId?: string | null
   ): Promise<void> {
+    const updateData: Partial<Pick<Match, "home_score" | "away_score" | "status" | "winner_id">> = {
+      home_score: homeScore,
+      away_score: awayScore,
+      status: status as Match["status"],
+    };
+
+    if (winnerId !== undefined) {
+      updateData.winner_id = winnerId;
+    }
+
     const { error } = await supabase
       .from("matches")
-      .update({
-        home_score: homeScore,
-        away_score: awayScore,
-        status: status
-      })
+      .update(updateData)
       .eq("id", matchId);
 
     if (error) throw new Error(`Erro ao atualizar placar: ${error.message}`);
@@ -152,9 +122,9 @@ export const MatchRepository = {
         match_id: event.match_id,
         player_id: event.player_id,
         team_id: event.team_id,
-        event_type: event.event_type
+        event_type: event.event_type,
       });
 
     if (error) throw new Error(`Erro ao registrar evento: ${error.message}`);
-  }
+  },
 };

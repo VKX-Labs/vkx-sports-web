@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
-import { EventType } from "@/types";
+import type { MatchEvent } from "@/types/event";
+import type { EventType } from "@/types";
 
 export interface SimplePlayer {
   id: string;
@@ -46,13 +47,13 @@ export const MatchService = {
       .select("*")
       .eq("match_id", matchId);
 
-    const formattedEvents: MatchEventItem[] = (existingEvents || []).map((e: any) => ({
+    const formattedEvents: MatchEventItem[] = (existingEvents || []).map((e: MatchEvent) => ({
       id: e.id,
       team_id: e.team_id,
       player_id: e.player_id,
       assist_player_id: e.assist_player_id,
-      event_type: e.type,
-      minute: e.minute,
+      event_type: e.event_type,
+      minute: String(e.minute ?? ""),
     }));
 
     return {
@@ -88,7 +89,7 @@ export const MatchService = {
         team_id: e.team_id,
         player_id: e.player_id || null,
         assist_player_id: e.assist_player_id || null,
-        type: e.event_type,
+        event_type: e.event_type,
         minute: e.minute || null,
       }));
 

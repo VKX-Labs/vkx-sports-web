@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTournamentGenerator } from "./useTournamentGenerator";
 
-export interface Team {
+export interface RoundTeam {
   id: string;
   name: string;
   badge_url: string | null;
 }
 
-export interface Match {
+export interface RoundMatch {
   id: string;
   round_id: string;
   home_team_id: string;
@@ -18,15 +18,16 @@ export interface Match {
   home_score: number | null;
   away_score: number | null;
   status: string;
-  home_team?: Team;
-  away_team?: Team;
+  home_team?: RoundTeam;
+  away_team?: RoundTeam;
 }
 
 export interface Round {
   id: string;
   name: string;
   round_number: number;
-  matches: Match[];
+  type?: string;
+  matches: RoundMatch[];
 }
 
 export function useRounds(championshipId: string) {
@@ -89,7 +90,7 @@ export function useRounds(championshipId: string) {
         return;
       }
 
-      const teamsMap: Record<string, Team> = {};
+      const teamsMap: Record<string, RoundTeam> = {};
       teamsData?.forEach((team) => {
         teamsMap[team.id] = {
           id: team.id,
@@ -139,13 +140,11 @@ export function useRounds(championshipId: string) {
       }, 2000);
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGeneratorTimeout(false);
   }, [generator?.loading]);
 
   useEffect(() => {
     if (championshipId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRoundsAndMatches();
     }
   }, [championshipId, generator?.hasRounds, fetchRoundsAndMatches]);
@@ -168,5 +167,6 @@ export function useRounds(championshipId: string) {
     isGenerating: generator?.generating || false,
     handleGenerate,
     currentRound: rounds[selectedRoundIndex],
+    error: null,
   };
 }

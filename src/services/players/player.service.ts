@@ -86,7 +86,7 @@ export class PlayerService {
 
     const countType = (typeNames: string[]) =>
       eventList.filter((e) => {
-        const val = String(e.type || e.event_type || "").trim().toUpperCase();
+        const val = String(e.event_type || "").trim().toUpperCase();
         return typeNames.some((t) => val === t.toUpperCase());
       }).length;
 

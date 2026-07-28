@@ -31,12 +31,12 @@ export default function JogadoresPage() {
         PlayerService.listPlayers(championshipId),
         supabase
           .from("teams")
-          .select("id, name, logo_url")
+          .select("id, name, badge_url")
           .eq("season_id", championshipId),
       ]);
 
       setPlayers(playersData || []);
-      setTeams((teamsResponse.data as Team[]) || []);
+      setTeams((teamsResponse.data as unknown as Team[]) || []);
     } catch (err) {
       console.error("Erro ao carregar dados dos jogadores:", err);
     } finally {
