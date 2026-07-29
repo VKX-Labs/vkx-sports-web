@@ -75,29 +75,89 @@ export class PlayerService {
   }
 
   static async getPlayerStats(playerId: string): Promise<PlayerStats> {
-    const { data: events, error } = await supabase
-      .from("match_events")
-      .select("*")
-      .eq("player_id", playerId);
+    try {
+      const player = await PlayerRepository.getPlayerById(playerId);
 
-    const eventList = events || [];
+      const [mainEventsRes, assistEventsRes] = await Promise.all([
+        supabase
+          .from("match_events")
+          .select("*")
+          .eq("player_id", playerId),
+        supabase
+          .from("match_events")
+          .select("*")
+          .eq("assist_player_id", playerId)
+      ]);
 
-    const uniqueMatches = new Set(eventList.map((e) => e.match_id)).size;
+      if (mainEventsRes.error) console.error("Erro busca mainEvents:", mainEventsRes.error);
+      if (assistEventsRes.error) console.error("Erro busca assistEvents:", assistEventsRes.error);
 
-    const countType = (typeNames: string[]) =>
-      eventList.filter((e) => {
-        const val = String(e.event_type || "").trim().toUpperCase();
-        return typeNames.some((t) => val === t.toUpperCase());
-      }).length;
+      const mainEvents = mainEventsRes.data || [];
+      const assistEvents = assistEventsRes.data || [];
 
-    return {
-      matches: uniqueMatches,
-      goals: countType(["GOAL", "GOL"]),
-      assists: countType(["ASSIST", "ASSISTENCIA", "ASSISTÊNCIA"]),
-      yellow_cards: countType(["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"]),
-      red_cards: countType(["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"]),
-      saves: countType(["SAVE", "DEFESA"]),
-      rating: 0.0,
-    };
+      const allEventsMap = new Map();
+      [...mainEvents, ...assistEvents].forEach((evt) => {
+        allEventsMap.set(evt.id, evt);
+      });
+      const eventList = Array.from(allEventsMap.values());
+
+      let totalMatches = 0;
+      if (player?.team_id) {
+        const { count } = await supabase
+          .from("matches")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "finished")
+          .or(`home_team_id.eq.${player.team_id},away_team_id.eq.${player.team_id}`);
+
+        totalMatches = count || 0;
+      }
+
+      const uniqueMatchesFromEvents = new Set(eventList.map((e) => e.match_id)).size;
+      const finalMatchCount = Math.max(totalMatches, uniqueMatchesFromEvents);
+
+      let goals = 0;
+      let assists = 0;
+      let yellowCards = 0;
+      let redCards = 0;
+      let saves = 0;
+
+      eventList.forEach((e: any) => {
+        const rawType = String(e.type || e.event_type || "").trim().toUpperCase();
+
+        if (String(e.player_id) === String(playerId)) {
+          if (["GOAL", "GOL"].includes(rawType)) goals++;
+          if (["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"].includes(rawType)) yellowCards++;
+          if (["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"].includes(rawType)) redCards++;
+          if (["SAVE", "DEFESA"].includes(rawType)) saves++;
+        }
+
+        if (String(e.assist_player_id) === String(playerId)) {
+          assists++;
+        } else if (String(e.player_id) === String(playerId) && ["ASSIST", "ASSISTENCIA", "ASSISTÊNCIA"].includes(rawType)) {
+          assists++;
+        }
+      });
+
+      return {
+        matches: finalMatchCount,
+        goals,
+        assists,
+        yellow_cards: yellowCards,
+        red_cards: redCards,
+        saves,
+        rating: 0.0,
+      };
+    } catch (err) {
+      console.error("Erro em getPlayerStats:", err);
+      return {
+        matches: 0,
+        goals: 0,
+        assists: 0,
+        yellow_cards: 0,
+        red_cards: 0,
+        saves: 0,
+        rating: 0.0,
+      };
+    }
   }
 }

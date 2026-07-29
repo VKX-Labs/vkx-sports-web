@@ -68,7 +68,8 @@ export function useClassificacao(championshipId: string) {
         .select(`
           *,
           home_team:teams!home_team_id(id, name, badge_url),
-          away_team:teams!away_team_id(id, name, badge_url)
+          away_team:teams!away_team_id(id, name, badge_url),
+          winner:teams!winner_id(id, name, badge_url)
         `)
         .eq("season_id", seasonId);
 
@@ -86,6 +87,7 @@ export function useClassificacao(championshipId: string) {
           ...m,
           home_team: teamMap.get(m.home_team_id) || null,
           away_team: teamMap.get(m.away_team_id) || null,
+          winner: teamMap.get(m.winner_id) || null,
         })) as Match[];
       }
 

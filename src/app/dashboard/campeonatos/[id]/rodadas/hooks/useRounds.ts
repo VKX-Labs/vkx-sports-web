@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTournamentGenerator } from "./useTournamentGenerator";
+import { advanceWinnerIfPhaseFinished } from "@/services/bracketEngine";
 
 export interface RoundTeam {
   id: string;
@@ -13,13 +14,21 @@ export interface RoundTeam {
 export interface RoundMatch {
   id: string;
   round_id: string;
-  home_team_id: string;
-  away_team_id: string;
+  season_id: string;
+  phase?: string | null;
+  bracket_position?: number | null;
+  next_match_id?: string | null;
+  home_team_id: string | null;
+  away_team_id: string | null;
   home_score: number | null;
   away_score: number | null;
+  home_score_leg2?: number | null;
+  away_score_leg2?: number | null;
+  penalties_home?: number | null;
+  penalties_away?: number | null;
   status: string;
-  home_team?: RoundTeam;
-  away_team?: RoundTeam;
+  home_team: RoundTeam;
+  away_team: RoundTeam;
 }
 
 export interface Round {
@@ -37,6 +46,7 @@ export function useRounds(championshipId: string) {
   const [selectedRoundIndex, setSelectedRoundIndex] = useState<number>(0);
   const [pageLoading, setPageLoading] = useState<boolean>(true);
   const [generatorTimeout, setGeneratorTimeout] = useState<boolean>(false);
+  const [, setCurrentSeasonId] = useState<string | null>(null);
 
   const fetchRoundsAndMatches = useCallback(async () => {
     try {
@@ -54,6 +64,8 @@ export function useRounds(championshipId: string) {
         return;
       }
 
+      setCurrentSeasonId(season.id);
+
       const { data: roundsData, error: roundsError } = await supabase
         .from("rounds")
         .select("id, name, round_number")
@@ -70,7 +82,7 @@ export function useRounds(championshipId: string) {
 
       const { data: matchesData, error: matchesError } = await supabase
         .from("matches")
-        .select("id, round_id, home_team_id, away_team_id, home_score, away_score, status")
+        .select("*")
         .in("round_id", roundIds);
 
       if (matchesError) {
@@ -86,8 +98,6 @@ export function useRounds(championshipId: string) {
 
       if (teamsError) {
         console.error("Erro ao buscar os times:", teamsError);
-        setPageLoading(false);
-        return;
       }
 
       const teamsMap: Record<string, RoundTeam> = {};
@@ -99,23 +109,39 @@ export function useRounds(championshipId: string) {
         };
       });
 
-      const formattedRounds = roundsData.map((round) => {
-        const roundMatches = (matchesData || [])
+      const formattedRounds: Round[] = roundsData.map((round) => {
+        const roundMatches: RoundMatch[] = (matchesData || [])
           .filter((m) => m.round_id === round.id)
-          .map((m) => {
-            const defaultHome = { id: m.home_team_id, name: "Time Mandante", badge_url: null };
-            const defaultAway = { id: m.away_team_id, name: "Time Visitante", badge_url: null };
+          .map((m: any) => {
+            const defaultHome: RoundTeam = {
+              id: m.home_team_id || "",
+              name: "A Definir",
+              badge_url: null,
+            };
+            const defaultAway: RoundTeam = {
+              id: m.away_team_id || "",
+              name: "A Definir",
+              badge_url: null,
+            };
 
             return {
               id: m.id,
               round_id: m.round_id,
+              season_id: m.season_id,
+              phase: m.phase,
+              bracket_position: m.bracket_position,
+              next_match_id: m.next_match_id ?? null,
               home_team_id: m.home_team_id,
               away_team_id: m.away_team_id,
               home_score: m.home_score,
               away_score: m.away_score,
+              home_score_leg2: m.home_score_leg2 ?? null,
+              away_score_leg2: m.away_score_leg2 ?? null,
+              penalties_home: m.penalties_home ?? null,
+              penalties_away: m.penalties_away ?? null,
               status: m.status,
-              home_team: teamsMap[m.home_team_id] || defaultHome,
-              away_team: teamsMap[m.away_team_id] || defaultAway,
+              home_team: m.home_team_id ? teamsMap[m.home_team_id] || defaultHome : defaultHome,
+              away_team: m.away_team_id ? teamsMap[m.away_team_id] || defaultAway : defaultAway,
             };
           });
 
@@ -149,6 +175,70 @@ export function useRounds(championshipId: string) {
     }
   }, [championshipId, generator?.hasRounds, fetchRoundsAndMatches]);
 
+  const updateMatchScore = async (
+    match: RoundMatch,
+    homeScore: number,
+    awayScore: number,
+    isTwoLegs: boolean = false,
+    homeScoreLeg2?: number | null,
+    awayScoreLeg2?: number | null,
+    penaltiesHome?: number | null,
+    penaltiesAway?: number | null
+  ) => {
+    try {
+      const updateData: Record<string, any> = {
+        home_score: homeScore,
+        away_score: awayScore,
+        status: "FINALIZADO",
+      };
+
+      if (isTwoLegs) {
+        updateData.home_score_leg2 = homeScoreLeg2 ?? null;
+        updateData.away_score_leg2 = awayScoreLeg2 ?? null;
+      }
+
+      if (penaltiesHome !== undefined && penaltiesAway !== undefined) {
+        updateData.penalties_home = penaltiesHome;
+        updateData.penalties_away = penaltiesAway;
+      }
+
+      const { error: updateErr } = await supabase
+        .from("matches")
+        .update(updateData)
+        .eq("id", match.id);
+
+      if (updateErr) throw updateErr;
+
+      if (match.phase && match.phase !== "REGULAR") {
+        await advanceWinnerIfPhaseFinished(
+          {
+            id: match.id,
+            season_id: match.season_id,
+            phase: match.phase,
+            bracket_position: match.bracket_position ?? 1,
+            next_match_id: match.next_match_id ?? null,
+            home_team_id: match.home_team_id,
+            away_team_id: match.away_team_id,
+            home_score: homeScore,
+            away_score: awayScore,
+            home_score_leg2: homeScoreLeg2 ?? null,
+            away_score_leg2: awayScoreLeg2 ?? null,
+            penalties_home: penaltiesHome ?? null,
+            penalties_away: penaltiesAway ?? null,
+            status: "FINALIZADO",
+          },
+          isTwoLegs
+        );
+      }
+
+      await fetchRoundsAndMatches();
+      return true;
+    } catch (err) {
+      console.error("Erro ao salvar placar da partida:", err);
+      return false;
+    }
+  };
+
   const handleGenerate = async () => {
     if (!generator?.generate) return;
     if (window.confirm("Deseja gerar os confrontos? Se houver jogos antigos, eles serão apagados.")) {
@@ -157,7 +247,7 @@ export function useRounds(championshipId: string) {
     }
   };
 
-  const finalLoading = generatorTimeout ? pageLoading : (pageLoading || generator?.loading);
+  const finalLoading = generatorTimeout ? pageLoading : pageLoading || generator?.loading;
 
   return {
     rounds,
@@ -166,6 +256,7 @@ export function useRounds(championshipId: string) {
     isLoading: finalLoading,
     isGenerating: generator?.generating || false,
     handleGenerate,
+    updateMatchScore,
     currentRound: rounds[selectedRoundIndex],
     error: null,
   };

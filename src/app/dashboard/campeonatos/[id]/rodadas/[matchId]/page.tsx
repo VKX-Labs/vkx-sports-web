@@ -16,8 +16,18 @@ export default function PartidaDetalhePage() {
   const [saving, setSaving] = useState(false);
 
   const [matchData, setMatchData] = useState<any>(null);
+  
+  // Placares Jogo 1 / Único
   const [homeScore, setHomeScore] = useState<number | null>(0);
   const [awayScore, setAwayScore] = useState<number | null>(0);
+
+  // Placares Jogo 2 (Volta - opcional)
+  const [homeScoreLeg2, setHomeScoreLeg2] = useState<number | null>(null);
+  const [awayScoreLeg2, setAwayScoreLeg2] = useState<number | null>(null);
+
+  // Pênaltis (opcional)
+  const [penaltiesHome, setPenaltiesHome] = useState<number | null>(null);
+  const [penaltiesAway, setPenaltiesAway] = useState<number | null>(null);
 
   const [playersHome, setPlayersHome] = useState<SimplePlayer[]>([]);
   const [playersAway, setPlayersAway] = useState<SimplePlayer[]>([]);
@@ -33,6 +43,11 @@ export default function PartidaDetalhePage() {
         setMatchData(data.match);
         setHomeScore(data.match.home_score ?? 0);
         setAwayScore(data.match.away_score ?? 0);
+        setHomeScoreLeg2(data.match.home_score_leg2 ?? null);
+        setAwayScoreLeg2(data.match.away_score_leg2 ?? null);
+        setPenaltiesHome(data.match.penalties_home ?? null);
+        setPenaltiesAway(data.match.penalties_away ?? null);
+
         setPlayersHome(data.homePlayers);
         setPlayersAway(data.awayPlayers);
         setEvents(data.events);
@@ -61,11 +76,23 @@ export default function PartidaDetalhePage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await MatchService.saveMatchResult(matchId, homeScore, awayScore, events);
+
+      await MatchService.saveMatchResult({
+        matchId,
+        homeScore: homeScore !== null ? Number(homeScore) : 0,
+        awayScore: awayScore !== null ? Number(awayScore) : 0,
+        homeScoreLeg2: homeScoreLeg2 !== null ? Number(homeScoreLeg2) : null,
+        awayScoreLeg2: awayScoreLeg2 !== null ? Number(awayScoreLeg2) : null,
+        penaltiesHome: penaltiesHome !== null ? Number(penaltiesHome) : null,
+        penaltiesAway: penaltiesAway !== null ? Number(penaltiesAway) : null,
+        events,
+      });
+
       router.refresh();
       router.back();
     } catch (err: any) {
-      alert("Erro ao salvar partida: " + err.message);
+      console.error("Erro ao salvar partida:", err);
+      alert("Erro ao salvar partida: " + (err?.message || "Erro desconhecido"));
     } finally {
       setSaving(false);
     }
@@ -82,7 +109,6 @@ export default function PartidaDetalhePage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 text-zinc-100">
-      
       <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <button 
@@ -128,7 +154,6 @@ export default function PartidaDetalhePage() {
         onAddEvent={(newEvent) => setEvents([...events, newEvent])}
         onRemoveEvent={(id) => setEvents(events.filter((e) => e.id !== id))}
       />
-
     </div>
   );
 }
