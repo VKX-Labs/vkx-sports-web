@@ -85,7 +85,7 @@ export default function AddSquadPlayerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm">
-      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md mx-auto shadow-2xl flex flex-col max-h-[80vh]">
+      <div className="bg-brand-dark border border-slate-850 rounded-2xl w-full max-w-md mx-auto shadow-2xl flex flex-col max-h-[85vh] overflow-y-auto">
         <div className="p-4 sm:p-5 border-b border-slate-800/60 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-brand-accent" />
@@ -110,7 +110,7 @@ export default function AddSquadPlayerModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar ou digitar nome para criar..."
-              className="w-full rounded-xl border border-slate-800 bg-slate-900 py-2.5 pr-4 pl-10 text-xs text-brand-textPrimary placeholder-slate-600 transition focus:border-brand-accent focus:outline-none"
+              className="w-full rounded-xl border border-slate-800 bg-slate-900 md:py-2.5 py-3 pr-4 pl-10 text-xs text-brand-textPrimary placeholder-slate-600 transition focus:border-brand-accent focus:outline-none"
             />
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function AddSquadPlayerModal({
                       type="button"
                       onClick={() => handleTransferPlayer(player.id)}
                       disabled={isProcessing || isCreating}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold transition disabled:opacity-50 ${
+                      className={`flex items-center gap-1.5 rounded-lg px-3 md:py-1.5 py-2 text-[10px] font-bold transition disabled:opacity-50 ${
                         isTransferred
                           ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30"
                           : "bg-brand-accent text-slate-950 hover:bg-brand-accentHover"

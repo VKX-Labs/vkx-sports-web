@@ -126,7 +126,9 @@ export function BracketView({ matches, rules, onUpdateRules }: BracketViewProps)
         )}
       </div>
 
-      <div className="flex gap-6 min-w-[750px] justify-between items-stretch overflow-x-auto pb-4">
+      <div className="flex gap-6 min-w-[750px] md:min-w-0 justify-between items-stretch overflow-x-auto md:overflow-visible pb-4"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+      >
         {activePhasesList.map((phaseName) => {
           const phaseMatches = matches.filter((m) => m.phase === phaseName);
           if (phaseMatches.length === 0) return null;

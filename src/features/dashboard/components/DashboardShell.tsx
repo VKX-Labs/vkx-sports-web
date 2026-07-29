@@ -43,7 +43,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition md:hidden"
+            className="md:hidden flex items-center justify-center h-11 w-11 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition"
             aria-label="Abrir menu"
           >
             <Menu className="w-5 h-5" />
@@ -76,7 +76,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         )}
 
         <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-brand-dark border-r border-slate-800 transition-transform duration-200 ease-in-out md:hidden ${
+          className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-brand-dark border-r border-slate-800 transition-transform duration-200 ease-in-out md:hidden overflow-y-auto ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

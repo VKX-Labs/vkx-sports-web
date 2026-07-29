@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 
 import { useChampionship } from "@/hooks/useChampionship";
 import WorkspaceSidebar from "@/features/championships/components/workspace/WorkspaceSidebar";
+import WorkspaceMobileNav from "@/features/championships/components/workspace/WorkspaceMobileNav";
 import WorkspaceLoading from "@/features/championships/components/workspace/WorkspaceLoading";
 
 export default function ChampionshipWorkspaceLayout({ children }: { children: React.ReactNode }) {
@@ -27,9 +28,13 @@ export default function ChampionshipWorkspaceLayout({ children }: { children: Re
     <div className="flex min-h-screen bg-[#090d16] text-white">
       <WorkspaceSidebar championship={championship} />
 
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <WorkspaceMobileNav championship={championship} />
+
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

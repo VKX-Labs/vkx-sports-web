@@ -90,9 +90,9 @@ export function MatchEventsSection({
   const allPlayers = [...homePlayers, ...awayPlayers];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
       
-      <div className="lg:col-span-5 bg-zinc-900/80 rounded-xl border border-zinc-800 p-4 space-y-3">
+      <div className="md:col-span-5 bg-zinc-900/80 rounded-xl border border-zinc-800 p-4 space-y-3">
         <h3 className="text-xs font-bold text-zinc-200 flex items-center gap-1.5 uppercase tracking-wide">
           <Plus className="w-3.5 h-3.5 text-emerald-400" />
           Lançar Novo Evento
@@ -104,7 +104,7 @@ export function MatchEventsSection({
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value as "home" | "away")}
-              className="w-full h-9 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
+              className="w-full md:h-9 h-11 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
             >
               <option value="home">{homeTeam.name}</option>
               <option value="away">{awayTeam.name}</option>
@@ -116,7 +116,7 @@ export function MatchEventsSection({
             <select
               value={eventType}
               onChange={(e) => setEventType(e.target.value as EventType)}
-              className="w-full h-9 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
+              className="w-full md:h-9 h-11 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
             >
               <option value="GOAL">Gol</option>
               <option value="YELLOW_CARD">Cartão Amarelo 🟨</option>
@@ -134,7 +134,7 @@ export function MatchEventsSection({
             <select
               value={selectedPlayer}
               onChange={(e) => setSelectedPlayer(e.target.value)}
-              className="w-full h-9 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
+              className="w-full md:h-9 h-11 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
             >
               <option value="">Selecione o atleta (opcional)</option>
               {currentTeamPlayers.map((p) => (
@@ -151,7 +151,7 @@ export function MatchEventsSection({
               <select
                 value={assistPlayer}
                 onChange={(e) => setAssistPlayer(e.target.value)}
-                className="w-full h-9 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-sky-500/50"
+                className="w-full md:h-9 h-11 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-sky-500/50"
               >
                 <option value="">Sem assistência</option>
                 {currentTeamPlayers
@@ -165,14 +165,14 @@ export function MatchEventsSection({
 
           <button
             type="submit"
-            className="w-full h-9 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 pt-0.5"
+            className="w-full md:h-9 h-11 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 pt-0.5"
           >
             <Plus className="w-3.5 h-3.5" /> Registrar Evento
           </button>
         </form>
       </div>
 
-      <div className="lg:col-span-7 bg-zinc-900/80 rounded-xl border border-zinc-800 p-4 space-y-4">
+      <div className="md:col-span-7 bg-zinc-900/80 rounded-xl border border-zinc-800 p-4 space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
           <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">Timeline da Partida</h3>
           <span className="text-[11px] font-mono text-zinc-500">{events.length} evento(s)</span>
@@ -183,7 +183,7 @@ export function MatchEventsSection({
             <p className="text-xs text-zinc-500">Nenhum evento registrado.</p>
           </div>
         ) : (
-          <div className="relative space-y-2.5 py-1 sm:before:absolute sm:before:inset-0 sm:before:left-1/2 sm:before:-ml-px sm:before:w-0.5 sm:before:bg-zinc-800">
+          <div className="relative space-y-2.5 py-1 md:before:absolute md:before:inset-0 md:before:left-1/2 md:before:-ml-px md:before:w-0.5 md:before:bg-zinc-800">
             {events.map((ev, idx) => {
               const isHome = ev.team_id === homeTeam.id;
               const player = allPlayers.find((p) => p.id === ev.player_id);
@@ -193,11 +193,11 @@ export function MatchEventsSection({
                 <div
                   key={ev.id || idx}
                   className={`relative flex items-center justify-between gap-2 ${
-                    isHome ? "sm:flex-row" : "sm:flex-row-reverse"
+                    isHome ? "md:flex-row" : "md:flex-row-reverse"
                   }`}
                 >
-                  <div className={`w-full sm:w-[44%] bg-zinc-950 border border-zinc-800 p-2.5 rounded-lg flex items-center justify-between gap-2 ${
-                    isHome ? "sm:text-right" : "sm:text-left"
+                  <div className={`w-full md:w-[44%] bg-zinc-950 border border-zinc-800 p-2.5 rounded-lg flex items-center justify-between gap-2 ${
+                    isHome ? "md:text-right" : "md:text-left"
                   }`}>
                     <div className="truncate w-full">
                       <div className="text-xs font-bold text-zinc-100 truncate">
@@ -212,11 +212,11 @@ export function MatchEventsSection({
                     </div>
                   </div>
 
-                  <div className="relative z-10 hidden sm:flex w-7 h-7 rounded-full bg-zinc-900 border border-zinc-700 items-center justify-center shrink-0">
+                  <div className="relative z-10 hidden md:flex w-7 h-7 rounded-full bg-zinc-900 border border-zinc-700 items-center justify-center shrink-0">
                     {renderEventIcon(ev.event_type)}
                   </div>
 
-                  <div className={`flex items-center ${isHome ? "sm:justify-start" : "sm:justify-end"}`}>
+                  <div className={`flex items-center ${isHome ? "md:justify-start" : "md:justify-end"}`}>
                     <button
                       type="button"
                       onClick={() => onRemoveEvent(ev.id!)}

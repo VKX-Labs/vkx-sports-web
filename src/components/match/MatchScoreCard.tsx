@@ -72,7 +72,7 @@ export function MatchScoreCard({
               min="0"
               value={homeScore ?? ""}
               onChange={(e) => setHomeScore(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400"
+              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0"
               placeholder="0"
             />
             <span className="text-zinc-600 font-bold text-sm select-none">:</span>
@@ -81,7 +81,7 @@ export function MatchScoreCard({
               min="0"
               value={awayScore ?? ""}
               onChange={(e) => setAwayScore(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-8 sm:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400"
+              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0"
               placeholder="0"
             />
           </div>

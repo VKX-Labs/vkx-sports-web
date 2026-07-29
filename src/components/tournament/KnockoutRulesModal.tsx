@@ -66,7 +66,7 @@ export function KnockoutConfigModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl p-6 space-y-6 shadow-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-2 text-emerald-400">
             <Settings2 className="w-5 h-5" />
@@ -173,13 +173,13 @@ export function KnockoutConfigModal({
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:bg-zinc-800"
+            className="px-4 md:py-2 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:bg-zinc-800"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/10"
+            className="flex items-center gap-1.5 px-4 md:py-2 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/10"
           >
             <Check className="w-4 h-4" /> Salvar Regras
           </button>

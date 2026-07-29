@@ -124,7 +124,7 @@ export default function PartidaDetalhePage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="h-10 px-5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+          className="md:h-10 h-11 px-5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
         >
           {saving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
