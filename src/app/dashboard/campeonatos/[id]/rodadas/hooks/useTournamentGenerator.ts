@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { MatchRepository } from "@/repositories/match.repository";
 import type { GenerateTournamentOptions } from "@/repositories/match.repository";
+import type { TournamentType } from "@/types/tournament";
+import { getDefaultKnockoutRules, KnockoutRules } from "@/types/tournament";
 
 export interface GeneratorOptions {
   shuffle: boolean;
   doubleRound: boolean;
+  knockoutRules?: KnockoutRules;
 }
 
 export function useTournamentGenerator(championshipId: string) {
@@ -19,6 +22,7 @@ export function useTournamentGenerator(championshipId: string) {
   const [options, setOptions] = useState<GeneratorOptions>({
     shuffle: true,
     doubleRound: false,
+    knockoutRules: getDefaultKnockoutRules(),
   });
 
   const init = useCallback(async () => {
@@ -40,7 +44,9 @@ export function useTournamentGenerator(championshipId: string) {
 
       if (!seasonData) {
         console.warn(`Nenhuma temporada ativa encontrada para o campeonato: ${championshipId}`);
+        setSeasonId(null);
         setTeamCount(0);
+        setHasRounds(false);
         return;
       }
 
@@ -93,10 +99,13 @@ export function useTournamentGenerator(championshipId: string) {
         .toUpperCase()
         .replace(/-/g, "_");
 
+      const isKnockout = normalizedType === "MATA_MATA";
+
       const genOptions: GenerateTournamentOptions = {
         shuffle: options.shuffle,
         doubleRound: options.doubleRound,
-        tournamentType: normalizedType === "MATA_MATA" ? "MATA_MATA" : "ROUND_ROBIN",
+        tournamentType: normalizedType as TournamentType | "ROUND_ROBIN",
+        ...(isKnockout && options.knockoutRules ? { knockoutRules: options.knockoutRules } : {}),
       };
 
       await MatchRepository.generateTournament(championshipId, seasonId, genOptions);
@@ -114,8 +123,10 @@ export function useTournamentGenerator(championshipId: string) {
     generating,
     hasRounds,
     teamCount,
+    tournamentType,
     options,
     setOptions,
     generate,
+    refetch: init,
   };
 }

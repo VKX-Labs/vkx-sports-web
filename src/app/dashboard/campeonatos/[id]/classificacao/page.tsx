@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useParams } from "next/navigation";
 import { useClassificacao } from "@/hooks/useClassificacao";
 import { StandingsTable } from "@/components/tournament/StandingsTable";
 import { BracketView } from "@/components/tournament/BracketView";
 import { StandingsService } from "@/services/standingsService";
 import { TournamentType, KnockoutRules } from "@/types/tournament";
+import { normalizeTournamentType } from "@/utils";
 import { Table, Trophy, Loader2, Settings2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -23,26 +24,18 @@ export default function ClassificacaoPage() {
     playoffMatches,
     tournamentType,
     setTournamentType,
+    knockoutRules,
+    setKnockoutRules,
+    loadTournamentData,
   } = useClassificacao(championshipId);
 
-  const [knockoutRules, setKnockoutRules] = useState<KnockoutRules>({
-    two_legged: false,
-    away_goals_rule: false,
-    extra_time: false,
-    penalties: true,
-    third_place_match: false,
-  });
-
-  const normalizedTournamentType = (
-    tournamentType || "PONTOS_CORRIDOS"
-  )
-    .toUpperCase()
-    .replace(/-/g, "_") as TournamentType;
+  const normalizedTournamentType = normalizeTournamentType(tournamentType);
 
   const handleTournamentTypeChange = async (newType: TournamentType) => {
-    setTournamentType(newType);
+    const canonicalType = normalizeTournamentType(newType);
+    setTournamentType(canonicalType);
 
-    if (newType === "MATA_MATA") {
+    if (canonicalType === "MATA_MATA") {
       setActiveTab("bracket");
     } else {
       setActiveTab("table");
@@ -56,14 +49,34 @@ export default function ClassificacaoPage() {
         .maybeSingle();
 
       if (seasonData?.id) {
-        const formattedType = newType.toLowerCase().replace(/_/g, "-");
         await supabase
           .from("seasons")
-          .update({ tournament_type: formattedType })
+          .update({ tournament_type: canonicalType })
           .eq("id", seasonData.id);
       }
     } catch (err) {
       console.error("Erro ao atualizar o tipo do torneio na temporada:", err);
+    }
+  };
+
+  const handleUpdateRules = async (newRules: KnockoutRules) => {
+    setKnockoutRules(newRules);
+
+    try {
+      const { data: seasonData } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("championship_id", championshipId)
+        .maybeSingle();
+
+      if (seasonData?.id) {
+        await supabase
+          .from("seasons")
+          .update({ rules: newRules as never })
+          .eq("id", seasonData.id);
+      }
+    } catch (err) {
+      console.error("Erro ao salvar regras do mata-mata:", err);
     }
   };
 
@@ -172,7 +185,7 @@ export default function ClassificacaoPage() {
         <BracketView
           matches={playoffMatches}
           rules={knockoutRules}
-          onUpdateRules={(newRules) => setKnockoutRules(newRules)}
+          onUpdateRules={handleUpdateRules}
         />
       )}
     </div>

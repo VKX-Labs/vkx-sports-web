@@ -1,13 +1,16 @@
 import { supabase } from "@/lib/supabase";
 import { generateRoundRobin, GenerationTeam } from "@/utils/generators/round-robin";
 import { generateKnockoutBracket } from "@/utils/generators/bracket";
+import { normalizeTournamentType } from "@/utils";
+import { TournamentType, KnockoutRules, isPhaseTwoLegged, PlayoffPhase } from "@/types/tournament";
 
 export interface GenerateTournamentOptions {
-  tournamentType?: "ROUND_ROBIN" | "MATA_MATA";
+  tournamentType?: TournamentType | "ROUND_ROBIN";
   shuffle?: boolean;
   doubleRound?: boolean;
   twoLegged?: boolean;
   hasPrePlayoffs?: boolean;
+  knockoutRules?: KnockoutRules;
 }
 
 export const TournamentGeneratorRepository = {
@@ -16,7 +19,8 @@ export const TournamentGeneratorRepository = {
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
-    const tournamentType = options.tournamentType || "ROUND_ROBIN";
+    const rawType = options.tournamentType || "PONTOS_CORRIDOS";
+    const tournamentType = rawType === "ROUND_ROBIN" ? "PONTOS_CORRIDOS" : normalizeTournamentType(rawType);
 
     if (tournamentType === "MATA_MATA") {
       return this.generateKnockoutTournament(seasonId, options);
@@ -27,7 +31,7 @@ export const TournamentGeneratorRepository = {
 
   async generateKnockoutTournament(
     seasonId: string,
-    _options: GenerateTournamentOptions = {}
+    options: GenerateTournamentOptions = {}
   ) {
     const { error: seasonError } = await supabase
       .from("seasons")
@@ -54,6 +58,7 @@ export const TournamentGeneratorRepository = {
     await supabase.from("matches").delete().eq("season_id", seasonId);
     await supabase.from("rounds").delete().eq("season_id", seasonId);
 
+    const knockoutRules = options.knockoutRules;
     const generated = generateKnockoutBracket(teams);
 
     const uniquePhases = Array.from(new Set(generated.map((m) => m.phase)));
@@ -76,19 +81,43 @@ export const TournamentGeneratorRepository = {
       }
     }
 
-    const insertResult = await supabase
-      .from("matches")
-      .insert(
-        generated.map((node) => ({
+    const matchesToInsert: Record<string, unknown>[] = [];
+    const leg2Matches: Record<string, unknown>[] = [];
+
+    for (const node of generated) {
+      const base = {
+        season_id: seasonId,
+        round_id: createdRoundsMap.get(node.phase) || null,
+        phase: node.phase,
+        bracket_position: node.bracket_position,
+        home_team_id: node.home_team_id,
+        away_team_id: node.away_team_id,
+        status: "scheduled",
+      };
+      matchesToInsert.push(base);
+
+      const isTwoLegged = knockoutRules
+        ? isPhaseTwoLegged(knockoutRules, node.phase as PlayoffPhase)
+        : Boolean(options.twoLegged);
+
+      if (isTwoLegged && node.home_team_id && node.away_team_id) {
+        leg2Matches.push({
           season_id: seasonId,
           round_id: createdRoundsMap.get(node.phase) || null,
           phase: node.phase,
           bracket_position: node.bracket_position,
-          home_team_id: node.home_team_id,
-          away_team_id: node.away_team_id,
+          home_team_id: node.away_team_id,
+          away_team_id: node.home_team_id,
           status: "scheduled",
-        }))
-      )
+        });
+      }
+    }
+
+    matchesToInsert.push(...leg2Matches);
+
+    const insertResult = await supabase
+      .from("matches")
+      .insert(matchesToInsert)
       .select("id, phase, bracket_position");
 
     if (insertResult.error) {
@@ -96,9 +125,11 @@ export const TournamentGeneratorRepository = {
     }
 
     const insertedMatches = insertResult.data ?? [];
+
+    const leg1Count = generated.length;
     const tempIdToDbId = new Map<string, string>();
 
-    for (let i = 0; i < generated.length; i++) {
+    for (let i = 0; i < insertedMatches.length; i++) {
       tempIdToDbId.set(String(i), insertedMatches[i].id);
     }
 
@@ -112,6 +143,23 @@ export const TournamentGeneratorRepository = {
       }
     }
 
+    for (let i = leg1Count; i < insertedMatches.length; i++) {
+      const leg1Index = i - leg1Count;
+      if (leg1Index < leg1Count) {
+        await supabase
+          .from("matches")
+          .update({ next_match_id: tempIdToDbId.get(String(leg1Index)) })
+          .eq("id", insertedMatches[i].id);
+      }
+    }
+
+    if (knockoutRules) {
+      await supabase
+        .from("seasons")
+        .update({ rules: knockoutRules as never })
+        .eq("id", seasonId);
+    }
+
     return true;
   },
 
@@ -119,9 +167,12 @@ export const TournamentGeneratorRepository = {
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
+    const rawType = options.tournamentType || "PONTOS_CORRIDOS";
+    const canonicalType = rawType === "ROUND_ROBIN" ? "PONTOS_CORRIDOS" : normalizeTournamentType(rawType);
+
     await supabase
       .from("seasons")
-      .update({ tournament_type: "pontos_corridos" })
+      .update({ tournament_type: canonicalType })
       .eq("id", seasonId);
 
     const { data: teams, error: teamsError } = await supabase

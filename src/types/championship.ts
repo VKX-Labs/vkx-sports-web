@@ -1,11 +1,13 @@
+import { TournamentType } from "./tournament";
+
 export interface Season {
   id: string;
   name: string;
-  status: 'CONFIGURACAO' | 'INSCRICOES' | 'SORTEIO' | 'ANDAMENTO' | 'FINALIZADO';
+  status: "CONFIGURACAO" | "INSCRICOES" | "SORTEIO" | "ANDAMENTO" | "FINALIZADO";
   modality: string;
   city: string | null;
   state: string | null;
-  tournament_type: 'PONTOS_CORRIDOS' | 'MATA_MATA' | 'GRUPOS_MATA_MATA' | 'ELIMINATORIA_DUPLA' | 'COPA' | 'LIGA';
+  tournament_type: TournamentType;
   max_teams: number | null;
 }
 

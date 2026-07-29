@@ -1,8 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { Shield, Trophy, Settings, X, Check } from "lucide-react";
-import { PlayoffMatch, KnockoutRules } from "@/types/tournament";
+import React, { useState, useMemo } from "react";
+import { Shield, Trophy, Settings } from "lucide-react";
+import {
+  PlayoffMatch,
+  KnockoutRules,
+  PlayoffPhase,
+  PHASE_ORDER,
+  PHASE_NAMES,
+  getPhaseRules,
+  isPhaseTwoLegged,
+  getDefaultKnockoutRules,
+} from "@/types/tournament";
+import { KnockoutService } from "@/services/knockout.service";
+import { KnockoutConfigModal } from "./KnockoutRulesModal";
 
 interface BracketViewProps {
   matches: PlayoffMatch[];
@@ -10,37 +21,75 @@ interface BracketViewProps {
   onUpdateRules?: (newRules: KnockoutRules) => void;
 }
 
-export function BracketView({
-  matches,
-  rules,
-  onUpdateRules,
-}: BracketViewProps) {
+function TeamRow({
+  team,
+  isWinner,
+  score,
+  scoreLeg2,
+  isTwoLegged,
+}: {
+  team?: PlayoffMatch["home_team"];
+  isWinner: boolean;
+  score?: number | null;
+  scoreLeg2?: number | null;
+  isTwoLegged: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between text-xs font-medium p-1.5 rounded-lg transition-colors ${
+        isWinner
+          ? "bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30"
+          : "text-zinc-200"
+      }`}
+    >
+      <div className="flex items-center gap-2 truncate">
+        <div className="w-4 h-4 bg-zinc-900 rounded p-0.5 flex items-center justify-center shrink-0 border border-zinc-800">
+          {team?.badge_url ? (
+            <img
+              src={team.badge_url}
+              alt={team.name || "Badge"}
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <Shield className="w-2.5 h-2.5 text-zinc-600" />
+          )}
+        </div>
+        <span className="truncate">{team?.name || "A Definir"}</span>
+      </div>
+
+      <div className="font-mono text-xs font-bold px-1.5 flex items-center gap-1">
+        <span>{score ?? "-"}</span>
+        {isTwoLegged && (
+          <span className="text-zinc-500 text-[10px]">
+            ({scoreLeg2 ?? "-"})
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function BracketView({ matches, rules, onUpdateRules }: BracketViewProps) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
-  const currentRules: KnockoutRules = rules || {
-    two_legged: false,
-    away_goals_rule: false,
-    extra_time: false,
-    penalties: true,
-    third_place_match: false,
-  };
+  const currentRules = useMemo(() => rules ?? getDefaultKnockoutRules(), [rules]);
 
-  const [formRules, setFormRules] = useState<KnockoutRules>(currentRules);
+  const activePhases = useMemo(() => {
+    const presentPhases = PHASE_ORDER.filter((phase) =>
+      matches.some((m) => m.phase === phase)
+    );
+    return presentPhases.length > 0 ? presentPhases : PHASE_ORDER;
+  }, [matches]);
 
-  const defaultPhases = ["PRE_PLAYOFF", "OITAVAS", "QUARTAS", "SEMI", "FINAL"];
-  
-  const availablePhases = defaultPhases.filter((p) =>
-    matches.some((m) => m.phase === p)
-  );
+  const activePhasesList = useMemo(() => {
+    return activePhases.filter((p) => matches.some((m) => m.phase === p));
+  }, [activePhases, matches]);
 
-  const phasesToRender = availablePhases.length > 0 ? availablePhases : defaultPhases;
-
-  const handleSaveRules = () => {
-    if (onUpdateRules) {
-      onUpdateRules(formRules);
-    }
-    setIsConfigOpen(false);
-  };
+  const allPhasesTwoLegged = useMemo(() => {
+    return activePhasesList.every((p) =>
+      isPhaseTwoLegged(currentRules, p as PlayoffPhase)
+    );
+  }, [currentRules, activePhasesList]);
 
   return (
     <div className="w-full bg-zinc-900/80 rounded-xl border border-zinc-800/80 p-4 sm:p-6 backdrop-blur-md space-y-6">
@@ -54,19 +103,21 @@ export function BracketView({
             <p className="text-[11px] text-zinc-500">
               Formato:{" "}
               <span className="text-emerald-400 font-semibold">
-                {currentRules.two_legged ? "Ida e Volta" : "Jogo Único"}
+                {allPhasesTwoLegged
+                  ? "Ida e Volta"
+                  : activePhasesList.some((p) =>
+                      isPhaseTwoLegged(currentRules, p as PlayoffPhase)
+                    )
+                  ? "Misto (Jogo Único + Ida e Volta)"
+                  : "Jogo Único"}
               </span>
-              {currentRules.away_goals_rule && " • Gol fora ativo"}
             </p>
           </div>
         </div>
 
         {onUpdateRules && (
           <button
-            onClick={() => {
-              setFormRules(currentRules);
-              setIsConfigOpen(true);
-            }}
+            onClick={() => setIsConfigOpen(true)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-all border border-zinc-700/80"
           >
             <Settings className="w-3.5 h-3.5" />
@@ -75,204 +126,114 @@ export function BracketView({
         )}
       </div>
 
-      <div className="flex gap-8 min-w-[700px] justify-between items-start overflow-x-auto pb-2">
-        {phasesToRender.map((phaseName) => {
+      <div className="flex gap-6 min-w-[750px] justify-between items-stretch overflow-x-auto pb-4">
+        {activePhasesList.map((phaseName) => {
           const phaseMatches = matches.filter((m) => m.phase === phaseName);
           if (phaseMatches.length === 0) return null;
 
+          const phaseRules = getPhaseRules(currentRules, phaseName as PlayoffPhase);
+          const isTwoLegged = phaseRules.two_legged;
+          const legPairs = KnockoutService.createLegPairs(
+            phaseMatches.map((m) => ({
+              phase: m.phase,
+              bracket_position: m.bracket_position,
+            }))
+          );
+
           return (
-            <div key={phaseName} className="flex-1 space-y-6 min-w-[220px]">
-              <div className="text-center pb-2 border-b border-zinc-800">
+            <div key={phaseName} className="flex-1 flex flex-col min-w-[220px]">
+              <div className="text-center pb-3 border-b border-zinc-800 mb-4">
                 <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">
-                  {phaseName === "PRE_PLAYOFF" ? "Pré-Playoffs" : phaseName}
+                  {PHASE_NAMES[phaseName] || phaseName}
                 </span>
+                {isTwoLegged && (
+                  <span className="ml-2 text-[9px] text-emerald-500 font-mono">
+                    Ida e Volta
+                  </span>
+                )}
               </div>
 
-              <div className="space-y-4">
-                {phaseMatches.map((match) => (
-                  <div
-                    key={match.id}
-                    className="bg-zinc-950 border border-zinc-800/90 rounded-xl p-3 space-y-2 shadow-md relative hover:border-zinc-700 transition-all"
-                  >
+              <div className="flex-1 flex flex-col justify-around gap-4">
+                {legPairs.map((pair, pairIdx) => {
+                  const match1 = phaseMatches[pair.leg1];
+                  const match2 = pair.leg2 != null ? phaseMatches[pair.leg2] : null;
+
+                  const winnerId = KnockoutService.determineWinnerId(
+                    match1,
+                    phaseName as PlayoffPhase,
+                    currentRules
+                  );
+
+                  const isHomeWinner =
+                    Boolean(winnerId) && winnerId === match1.home_team?.id;
+                  const isAwayWinner =
+                    Boolean(winnerId) && winnerId === match1.away_team?.id;
+
+                  const hasPenalties =
+                    match1.penalties_home != null && match1.penalties_away != null;
+
+                  const aggregateDisplay = isTwoLegged
+                    ? KnockoutService.getAggregateDisplay(
+                        match1,
+                        phaseName as PlayoffPhase,
+                        currentRules
+                      )
+                    : null;
+
+                  return (
                     <div
-                      className={`flex items-center justify-between text-xs font-medium p-1.5 rounded-lg transition-colors ${
-                        match.winner_id === match.home_team?.id
-                          ? "bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30"
-                          : "text-zinc-200"
-                      }`}
+                      key={`${match1.id}-${pairIdx}`}
+                      className="bg-zinc-950 border border-zinc-800/90 rounded-xl p-3 space-y-2 shadow-md relative hover:border-zinc-700 transition-all"
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <div className="w-4 h-4 bg-zinc-900 rounded p-0.5 flex items-center justify-center shrink-0 border border-zinc-800">
-                          {match.home_team?.badge_url ? (
-                            <img
-                              src={match.home_team.badge_url}
-                              alt=""
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <Shield className="w-2.5 h-2.5 text-zinc-600" />
-                          )}
+                      <TeamRow
+                        team={match1.home_team}
+                        isWinner={isHomeWinner}
+                        score={match1.home_score}
+                        scoreLeg2={match2?.away_score ?? null}
+                        isTwoLegged={isTwoLegged}
+                      />
+
+                      <div className="border-t border-zinc-800/60" />
+
+                      <TeamRow
+                        team={match1.away_team}
+                        isWinner={isAwayWinner}
+                        score={match1.away_score}
+                        scoreLeg2={match2?.home_score ?? null}
+                        isTwoLegged={isTwoLegged}
+                      />
+
+                      {aggregateDisplay && (
+                        <div className="text-[10px] text-center text-zinc-400 font-mono pt-1 border-t border-zinc-800/40">
+                          Agregado: {aggregateDisplay.homeTotal} x{" "}
+                          {aggregateDisplay.awayTotal}
                         </div>
-                        <span className="truncate">
-                          {match.home_team?.name || "A Definir"}
-                        </span>
-                      </div>
-                      
-                      <div className="font-mono text-xs font-bold px-1.5 flex items-center gap-1">
-                        <span>{match.home_score ?? "-"}</span>
-                        {currentRules.two_legged && (
-                          <span className="text-zinc-500 text-[10px]">
-                            ({match.home_score_leg2 ?? "-"})
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                      )}
 
-                    <div className="border-t border-zinc-800/60" />
-
-                    <div
-                      className={`flex items-center justify-between text-xs font-medium p-1.5 rounded-lg transition-colors ${
-                        match.winner_id === match.away_team?.id
-                          ? "bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30"
-                          : "text-zinc-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <div className="w-4 h-4 bg-zinc-900 rounded p-0.5 flex items-center justify-center shrink-0 border border-zinc-800">
-                          {match.away_team?.badge_url ? (
-                            <img
-                              src={match.away_team.badge_url}
-                              alt=""
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <Shield className="w-2.5 h-2.5 text-zinc-600" />
-                          )}
+                      {hasPenalties && (
+                        <div className="text-[10px] text-center text-amber-400 font-mono pt-1">
+                          Pênaltis: {match1.penalties_home} x {match1.penalties_away}
                         </div>
-                        <span className="truncate">
-                          {match.away_team?.name || "A Definir"}
-                        </span>
-                      </div>
-
-                      <div className="font-mono text-xs font-bold px-1.5 flex items-center gap-1">
-                        <span>{match.away_score ?? "-"}</span>
-                        {currentRules.two_legged && (
-                          <span className="text-zinc-500 text-[10px]">
-                            ({match.away_score_leg2 ?? "-"})
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
-
-                    {match.penalties_home !== null && match.penalties_away !== null && (
-                      <div className="text-[10px] text-center text-amber-400 font-mono pt-1">
-                        Pênaltis: {match.penalties_home} x {match.penalties_away}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
 
-      {isConfigOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <Settings className="w-5 h-5" />
-                <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">
-                  Configurações do Mata-Mata
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsConfigOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Formato Jogo Único x Ida e Volta */}
-              <div className="flex items-center justify-between p-3.5 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
-                <div>
-                  <p className="text-xs font-semibold text-zinc-200">Formato dos Confrontos</p>
-                  <p className="text-[11px] text-zinc-500">Ida e Volta ou Jogo Único</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormRules((prev) => ({ ...prev, two_legged: !prev.two_legged }))
-                  }
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    formRules.two_legged
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                      : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                  }`}
-                >
-                  {formRules.two_legged ? "Ida e Volta" : "Jogo Único"}
-                </button>
-              </div>
-
-              {formRules.two_legged && (
-                <div className="flex items-center justify-between p-3.5 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
-                  <div>
-                    <p className="text-xs font-semibold text-zinc-200">Gol Fora de Casa</p>
-                    <p className="text-[11px] text-zinc-500">Gols fora como desempate</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={formRules.away_goals_rule}
-                    onChange={(e) =>
-                      setFormRules((prev) => ({
-                        ...prev,
-                        away_goals_rule: e.target.checked,
-                      }))
-                    }
-                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center justify-between p-3.5 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
-                <div>
-                  <p className="text-xs font-semibold text-zinc-200">Disputa de 3º Lugar</p>
-                  <p className="text-[11px] text-zinc-500">Partida entre perdedores da semi</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={formRules.third_place_match}
-                  onChange={(e) =>
-                    setFormRules((prev) => ({
-                      ...prev,
-                      third_place_match: e.target.checked,
-                    }))
-                  }
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setIsConfigOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:bg-zinc-800"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveRules}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-all"
-              >
-                <Check className="w-4 h-4" /> Salvar Regras
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <KnockoutConfigModal
+        isOpen={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+        rules={currentRules}
+        onSaveRules={(newRules) => {
+          onUpdateRules?.(newRules);
+          setIsConfigOpen(false);
+        }}
+        activePhases={activePhasesList as PlayoffPhase[]}
+      />
     </div>
   );
 }
