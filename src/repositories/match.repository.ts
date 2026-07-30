@@ -1,5 +1,3 @@
-// src/repositories/match.repository.ts
-
 import { supabase } from "@/lib/supabase";
 import type { Match, MatchEventInput } from "@/types/match";
 import type { Player } from "@/types/player";
@@ -11,9 +9,6 @@ import {
 export type { GenerateTournamentOptions };
 
 export const MatchRepository = {
-  /**
-   * Verifica se a temporada possui rodadas ou confrontos gerados
-   */
   async hasGeneratedRounds(seasonId: string): Promise<boolean> {
     const { count, error } = await supabase
       .from("rounds")
@@ -23,9 +18,6 @@ export const MatchRepository = {
     return !error && (count ?? 0) > 0;
   },
 
-  /**
-   * Gera o torneio (delegado ao TournamentGeneratorRepository)
-   */
   async generateTournament(
     championshipId: string,
     seasonId: string,
@@ -48,9 +40,6 @@ export const MatchRepository = {
     return TournamentGeneratorRepository.generateRoundRobinTournament(seasonId, options);
   },
 
-  /**
-   * Busca todas as partidas pertencentes às fases de Mata-Mata (playoffs) da temporada
-   */
   async getPlayoffMatches(seasonId: string): Promise<Match[]> {
     const { data, error } = await supabase
       .from("matches")
@@ -68,9 +57,6 @@ export const MatchRepository = {
     return data as Match[];
   },
 
-  /**
-   * Busca as partidas de uma rodada específica
-   */
   async getMatchesByRound(roundId: string): Promise<Match[]> {
     const { data, error } = await supabase
       .from("matches")
@@ -85,9 +71,6 @@ export const MatchRepository = {
     return data as Match[];
   },
 
-  /**
-   * Busca os jogadores vinculados a um time
-   */
   async getPlayersByTeam(teamId: string): Promise<Player[]> {
     const { data, error } = await supabase
       .from("players")
@@ -99,9 +82,6 @@ export const MatchRepository = {
     return data as Player[];
   },
 
-  /**
-   * Atualiza o placar, resultado de ida/volta, pênaltis e status da partida
-   */
   async updateMatchScore(
     matchId: string,
     homeScore: number,
@@ -143,9 +123,6 @@ export const MatchRepository = {
     if (error) throw new Error(`Erro ao atualizar placar: ${error.message}`);
   },
 
-  /**
-   * Limpa todos os eventos de uma partida
-   */
   async clearMatchEvents(matchId: string): Promise<void> {
     const { error } = await supabase
       .from("match_events")
@@ -155,9 +132,6 @@ export const MatchRepository = {
     if (error) throw new Error(`Erro ao limpar eventos da partida: ${error.message}`);
   },
 
-  /**
-   * Adiciona um evento (gol, cartão, etc.) a uma partida
-   */
   async addMatchEvent(event: MatchEventInput): Promise<void> {
     const { error } = await supabase
       .from("match_events")
@@ -165,7 +139,7 @@ export const MatchRepository = {
         match_id: event.match_id,
         player_id: event.player_id,
         team_id: event.team_id,
-        event_type: event.event_type,
+        type: event.type,
       });
 
     if (error) throw new Error(`Erro ao registrar evento: ${error.message}`);

@@ -47,7 +47,7 @@ export function MatchEventsSection({
       team_id: currentTeamId,
       player_id: selectedPlayer || null,
       assist_player_id: eventType === "GOAL" ? (assistPlayer || null) : null,
-      event_type: eventType,
+      type: eventType,
     };
 
     onAddEvent(newEvent);
@@ -204,7 +204,7 @@ export function MatchEventsSection({
                         {player ? player.name : "Atleta não informado"}
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-                        <span>{getEventLabel(ev.event_type)}</span>
+                        <span>{getEventLabel(ev.type)}</span>
                         {ev.assist_player_id && assistPlayerObj && (
                           <span className="text-sky-400">(Passe: {assistPlayerObj.name})</span>
                         )}
@@ -213,7 +213,7 @@ export function MatchEventsSection({
                   </div>
 
                   <div className="relative z-10 hidden md:flex w-7 h-7 rounded-full bg-zinc-900 border border-zinc-700 items-center justify-center shrink-0">
-                    {renderEventIcon(ev.event_type)}
+                    {renderEventIcon(ev.type)}
                   </div>
 
                   <div className={`flex items-center ${isHome ? "md:justify-start" : "md:justify-end"}`}>

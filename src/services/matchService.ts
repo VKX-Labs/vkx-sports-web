@@ -13,7 +13,7 @@ export interface MatchEventItem {
   team_id: string;
   player_id?: string | null;
   assist_player_id?: string | null;
-  event_type: EventType;
+  type: EventType;
   minute?: string | number | null;
 }
 
@@ -30,9 +30,6 @@ export interface SaveMatchResultParams {
 }
 
 export const MatchService = {
-  /**
-   * Busca os detalhes completos da partida (times, jogadores e eventos cadastrados)
-   */
   async getMatchDetails(matchId: string) {
     const { data: match, error: matchError } = await supabase
       .from("matches")
@@ -76,7 +73,7 @@ export const MatchService = {
       team_id: e.team_id,
       player_id: e.player_id,
       assist_player_id: e.assist_player_id,
-      event_type: (e.type || e.event_type) as EventType,
+      type: e.type as EventType,
       minute: e.minute !== null && e.minute !== undefined ? String(e.minute) : "",
     }));
 
@@ -88,8 +85,6 @@ export const MatchService = {
     };
   },
 
-  /**
-   */
   async saveMatchResult({
     matchId,
     homeScore,
@@ -140,7 +135,7 @@ export const MatchService = {
           team_id: e.team_id,
           player_id: e.player_id || null,
           assist_player_id: e.assist_player_id || null,
-          type: e.event_type,
+          type: e.type,
           minute: isNaN(Number(parsedMinute)) ? null : parsedMinute,
         };
       });

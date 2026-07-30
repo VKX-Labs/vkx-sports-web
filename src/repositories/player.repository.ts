@@ -148,20 +148,20 @@ export class PlayerRepository {
 
     const { data: events, error } = await supabase
       .from("match_events")
-      .select("event_type, player_id, assist_player_id, goalkeeper_id, rating")
+      .select("type, player_id, assist_player_id, goalkeeper_id, rating")
       .or(`player_id.eq.${playerId},assist_player_id.eq.${playerId},goalkeeper_id.eq.${playerId}`);
 
     if (error || !events || events.length === 0) {
       return initialStats;
     }
 
-    const goals = events.filter((e) => e.event_type === "GOAL" && e.player_id === playerId).length;
+    const goals = events.filter((e) => e.type === "GOAL" && e.player_id === playerId).length;
     const assists = events.filter(
-      (e) => e.event_type === "ASSIST" || e.assist_player_id === playerId
+      (e) => e.type === "ASSIST" || e.assist_player_id === playerId
     ).length;
-    const yellow_cards = events.filter((e) => e.event_type === "YELLOW_CARD" && e.player_id === playerId).length;
-    const red_cards = events.filter((e) => e.event_type === "RED_CARD" && e.player_id === playerId).length;
-    const saves = events.filter((e) => e.event_type === "SAVE" && e.goalkeeper_id === playerId).length;
+    const yellow_cards = events.filter((e) => e.type === "YELLOW_CARD" && e.player_id === playerId).length;
+    const red_cards = events.filter((e) => e.type === "RED_CARD" && e.player_id === playerId).length;
+    const saves = events.filter((e) => e.type === "SAVE" && e.player_id === playerId).length;
 
     const ratedEvents = events.filter((e) => e.rating !== null && e.rating !== undefined);
     let rating = 0.0;

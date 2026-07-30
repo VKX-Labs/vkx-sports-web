@@ -17,7 +17,7 @@ export interface MatchEvent {
   player_id?: string | null;
   assist_player_id?: string | null;
   goalkeeper_id?: string | null;
-  event_type: EventType;
+  type: EventType;
   minute?: number | null;
   rating?: number | null;
   observation?: string | null;
