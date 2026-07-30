@@ -36,9 +36,9 @@ export function MatchCard({ match }: MatchCardProps) {
 
   const renderBadge = (url: string | null | undefined) => {
     if (url) {
-      return <img src={url} alt="Escudo" className="w-8 h-8 object-contain" />;
+      return <img src={url} alt="Escudo" className="w-full h-full object-contain" />;
     }
-    return <Shield className="w-8 h-8 text-slate-500 opacity-60" />;
+    return <Shield className="w-4 h-4 md:w-5 md:h-5 text-slate-500 opacity-60" />;
   };
 
   const handleCardClick = () => {
@@ -63,19 +63,19 @@ export function MatchCard({ match }: MatchCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
+      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 grid grid-cols-[1fr_auto_1fr] md:flex md:items-center md:justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
     >
-      <div className="flex items-center gap-3 flex-1 justify-end text-right">
-        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px] group-hover:text-emerald-400 transition-colors">
+      <div className="flex items-center justify-end gap-2 md:gap-3 md:flex-1 md:text-right">
+        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[90px] md:max-w-[140px] group-hover:text-emerald-400 transition-colors">
           {homeName}
         </span>
-        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
           {renderBadge(home?.badge_url)}
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center px-4 min-w-[100px]">
-        <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
+      <div className="flex flex-col items-center justify-center px-2 md:px-4 min-w-[80px] md:min-w-[100px]">
+        <div className="flex items-center gap-1.5 md:gap-2 bg-slate-950 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg border border-slate-800 font-mono text-sm md:text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
           <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
             {match.home_score !== null ? match.home_score : "-"}
           </span>
@@ -93,11 +93,11 @@ export function MatchCard({ match }: MatchCardProps) {
         </span>
       </div>
 
-      <div className="flex items-center gap-3 flex-1 justify-start text-left">
-        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+      <div className="flex items-center justify-start gap-2 md:gap-3 md:flex-1 md:text-left">
+        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
           {renderBadge(away?.badge_url)}
         </div>
-        <span className="text-sm font-bold text-slate-200 truncate max-w-[140px] group-hover:text-emerald-400 transition-colors">
+        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[90px] md:max-w-[140px] group-hover:text-emerald-400 transition-colors">
           {awayName}
         </span>
       </div>

@@ -18,8 +18,10 @@ export function StandingsTable({
         <span className="text-[11px] text-zinc-500 font-mono">{standings.length} equipes</span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs text-zinc-300">
+      <div className="overflow-x-auto scrollbar-none"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <table className="w-full min-w-[550px] text-left text-xs text-zinc-300">
           <thead className="bg-zinc-950/60 text-[10px] text-zinc-400 uppercase font-mono tracking-wider border-b border-zinc-800/60">
             <tr>
               <th className="py-2.5 px-3 text-center w-10">Pos</th>
@@ -43,7 +45,7 @@ export function StandingsTable({
                 <tr key={team.team_id} className="hover:bg-zinc-800/40 transition-colors group">
                   <td className="py-2.5 px-3 text-center font-mono text-xs font-bold">
                     <span
-                      className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${
+                      className={`inline-flex items-center justify-center w-5 h-5 md:w-6 md:h-6 rounded-md text-[10px] md:text-xs ${
                         isTop4
                           ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                           : "text-zinc-400"
@@ -66,7 +68,7 @@ export function StandingsTable({
                           <Shield className="w-3.5 h-3.5 text-zinc-600" />
                         )}
                       </div>
-                      <span className="truncate max-w-[140px] sm:max-w-none">
+                      <span className="truncate max-w-[100px] sm:max-w-none text-xs md:text-sm">
                         {team.team_name}
                       </span>
                     </div>
