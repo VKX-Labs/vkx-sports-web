@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useRodadasLocal } from "./useRodadasLocal";
 import { useRounds } from "@/hooks/useRounds";
 import { useTeams } from "@/hooks/useTeams";
@@ -10,14 +10,9 @@ import { supabase } from "@/lib/supabase";
 
 export function useRodadasPageController() {
   const params = useParams();
-  const router = useRouter();
   const championshipId = params?.id as string;
 
-  const {
-    createRound,
-    refetchRounds: refetchGlobalRounds,
-    loading: loadingGlobal,
-  } = useRounds(championshipId);
+  const { createRound, loading: loadingGlobal } = useRounds(championshipId);
 
   const {
     rounds = [],
@@ -27,6 +22,8 @@ export function useRodadasPageController() {
     currentRound,
     updateMatchScore,
     refetchLocalRounds,
+    addRoundLocal,
+    removeRoundLocal,
   } = useRodadasLocal(championshipId);
 
   const { teams = [] } = useTeams(championshipId);
@@ -38,9 +35,9 @@ export function useRodadasPageController() {
   const loading = loadingLocal || loadingGlobal;
 
   const reloadData = async () => {
-    if (refetchGlobalRounds) await refetchGlobalRounds();
-    if (refetchLocalRounds) await refetchLocalRounds();
-    router.refresh();
+    if (refetchLocalRounds) {
+      await refetchLocalRounds();
+    }
   };
 
   const handleAddRound = async () => {
@@ -48,21 +45,19 @@ export function useRodadasPageController() {
       setIsCreatingRound(true);
 
       if (typeof createRound === "function") {
-        await createRound();
+        const newRoundData = await createRound();
 
-        let updatedLength = rounds.length + 1;
-
-        if (refetchGlobalRounds) {
-          const globalData = await refetchGlobalRounds();
-          if (globalData?.length) updatedLength = globalData.length;
+        if (newRoundData && typeof addRoundLocal === "function") {
+          addRoundLocal({
+            id: newRoundData.id,
+            name: newRoundData.name,
+            round_number: newRoundData.round_number ?? rounds.length + 1,
+            matches: [],
+          });
+        } else {
+          await reloadData();
+          setSelectedRoundIndex(Math.max(0, rounds.length));
         }
-
-        if (refetchLocalRounds) {
-          await refetchLocalRounds();
-        }
-
-        router.refresh();
-        setSelectedRoundIndex(Math.max(0, updatedLength - 1));
       }
     } catch (err: any) {
       console.error("Erro ao criar rodada:", err);
@@ -86,10 +81,12 @@ export function useRodadasPageController() {
 
       await MatchRepository.deleteRound(currentRound.id);
 
-      const nextIndex = Math.max(0, selectedRoundIndex - 1);
-      setSelectedRoundIndex(nextIndex);
-
-      await reloadData();
+      if (typeof removeRoundLocal === "function") {
+        removeRoundLocal(currentRound.id);
+      } else {
+        await reloadData();
+        setSelectedRoundIndex(Math.max(0, selectedRoundIndex - 1));
+      }
     } catch (err: any) {
       console.error("Erro ao deletar rodada:", err);
       alert(`Não foi possível excluir a rodada: ${err.message}`);

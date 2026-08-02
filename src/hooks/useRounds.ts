@@ -70,8 +70,8 @@ export function useRounds(championshipIdOrSeasonId: string) {
   }, [championshipIdOrSeasonId, selectedRoundId]);
 
   const createRound = useCallback(
-    async (customName?: string) => {
-      if (!championshipIdOrSeasonId) return;
+    async (customName?: string): Promise<Round | undefined> => {
+      if (!championshipIdOrSeasonId) return undefined;
 
       try {
         let seasonId = championshipIdOrSeasonId;
@@ -89,11 +89,15 @@ export function useRounds(championshipIdOrSeasonId: string) {
         const nextRoundNumber = rounds.length + 1;
         const name = customName || `${nextRoundNumber}ª Rodada`;
 
-        const { error } = await supabase.from("rounds").insert({
-          season_id: seasonId,
-          name,
-          round_number: nextRoundNumber,
-        });
+        const { data, error } = await supabase
+          .from("rounds")
+          .insert({
+            season_id: seasonId,
+            name,
+            round_number: nextRoundNumber,
+          })
+          .select("id, name, round_number")
+          .single();
 
         if (error) {
           console.error(
@@ -103,12 +107,14 @@ export function useRounds(championshipIdOrSeasonId: string) {
             error.hint
           );
           alert(`Erro ao criar rodada: ${error.message}`);
-          return;
+          return undefined;
         }
 
         await fetchRounds();
+        return data as Round;
       } catch (err) {
         console.error("Erro inesperado ao criar rodada:", err);
+        return undefined;
       }
     },
     [championshipIdOrSeasonId, rounds.length, fetchRounds]
