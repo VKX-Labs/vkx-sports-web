@@ -16,7 +16,11 @@ export default function HeroSection() {
   function handleCreateTournament() {
     if (authLoading) return;
 
-    router.push(user ? "/dashboard/campeonatos" : "/register");
+    if (user) {
+      router.push("/dashboard/campeonatos");
+    } else {
+      router.push("/login?redirect=/dashboard/campeonatos");
+    }
   }
 
   async function handleExploreClick() {
@@ -28,7 +32,7 @@ export default function HeroSection() {
       if (user) {
         router.push("/dashboard/campeonatos");
       } else {
-        router.push("/login");
+        router.push("/login?redirect=/dashboard/campeonatos");
       }
     } catch (error) {
       console.error("Erro ao navegar:", error);

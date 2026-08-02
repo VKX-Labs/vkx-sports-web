@@ -23,21 +23,147 @@ export const MatchRepository = {
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
-    return TournamentGeneratorRepository.generateTournament(championshipId, seasonId, options);
+    return TournamentGeneratorRepository.generateTournament(
+      championshipId,
+      seasonId,
+      options
+    );
   },
 
   async generateKnockoutTournament(
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
-    return TournamentGeneratorRepository.generateKnockoutTournament(seasonId, options);
+    return TournamentGeneratorRepository.generateKnockoutTournament(
+      seasonId,
+      options
+    );
   },
 
   async generateRoundRobinTournament(
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
-    return TournamentGeneratorRepository.generateRoundRobinTournament(seasonId, options);
+    return TournamentGeneratorRepository.generateRoundRobinTournament(
+      seasonId,
+      options
+    );
+  },
+
+  async createRound(
+    seasonId: string,
+    name: string,
+    roundNumber: number
+  ) {
+    const { data, error } = await supabase
+      .from("rounds")
+      .insert([
+        {
+          season_id: seasonId,
+          name,
+          round_number: roundNumber,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteRound(roundId: string): Promise<boolean> {
+    try {
+      const { data: matches, error: fetchMatchesError } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("round_id", roundId);
+
+      if (fetchMatchesError) {
+        throw new Error(`Erro ao buscar jogos da rodada: ${fetchMatchesError.message}`);
+      }
+
+      if (matches && matches.length > 0) {
+        const matchIds = matches.map((match) => match.id);
+
+        await supabase
+          .from("match_events")
+          .delete()
+          .in("match_id", matchIds);
+
+        await supabase
+          .from("match_player_stats")
+          .delete()
+          .in("match_id", matchIds);
+
+        const { error: matchesError } = await supabase
+          .from("matches")
+          .delete()
+          .eq("round_id", roundId);
+
+        if (matchesError) {
+          throw new Error(`Erro ao excluir partidas da rodada: ${matchesError.message}`);
+        }
+      }
+
+      const { error: roundError } = await supabase
+        .from("rounds")
+        .delete()
+        .eq("id", roundId);
+
+      if (roundError) {
+        throw new Error(`Erro ao excluir rodada: ${roundError.message}`);
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Erro em deleteRound:", error);
+      throw error;
+    }
+  },
+
+  async createManualMatch({
+    seasonId,
+    roundId,
+    homeTeamId,
+    awayTeamId,
+  }: {
+    seasonId: string;
+    roundId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+  }) {
+    if (homeTeamId === awayTeamId) {
+      throw new Error("O time mandante e visitante não podem ser iguais.");
+    }
+
+    const { data, error } = await supabase
+      .from("matches")
+      .insert([
+        {
+          season_id: seasonId,
+          round_id: roundId,
+          home_team_id: homeTeamId,
+          away_team_id: awayTeamId,
+          status: "AGENDADO",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteMatch(matchId: string) {
+    await this.clearMatchEvents(matchId);
+
+    const { error } = await supabase
+      .from("matches")
+      .delete()
+      .eq("id", matchId);
+
+    if (error) throw error;
+    return true;
   },
 
   async getPlayoffMatches(seasonId: string): Promise<Match[]> {
@@ -53,7 +179,10 @@ export const MatchRepository = {
       .not("phase", "is", null)
       .order("bracket_position", { ascending: true });
 
-    if (error) throw new Error(`Erro ao carregar chaveamento: ${error.message}`);
+    if (error) {
+      throw new Error(`Erro ao carregar chaveamento: ${error.message}`);
+    }
+
     return data as Match[];
   },
 
@@ -67,7 +196,10 @@ export const MatchRepository = {
       `)
       .eq("round_id", roundId);
 
-    if (error) throw new Error(`Erro ao carregar partidas: ${error.message}`);
+    if (error) {
+      throw new Error(`Erro ao carregar partidas: ${error.message}`);
+    }
+
     return data as Match[];
   },
 
@@ -76,9 +208,12 @@ export const MatchRepository = {
       .from("players")
       .select("*")
       .eq("team_id", teamId)
-      .order("name", { ascending: true });
+      .order("name");
 
-    if (error) throw new Error(`Erro ao buscar atletas do time: ${error.message}`);
+    if (error) {
+      throw new Error(`Erro ao buscar atletas do time: ${error.message}`);
+    }
+
     return data as Player[];
   },
 
@@ -86,7 +221,7 @@ export const MatchRepository = {
     matchId: string,
     homeScore: number,
     awayScore: number,
-    status: string = "finished",
+    status = "finished",
     winnerId?: string | null,
     homeScoreLeg2?: number | null,
     awayScoreLeg2?: number | null,
@@ -99,9 +234,7 @@ export const MatchRepository = {
       status: status as Match["status"],
     };
 
-    if (winnerId !== undefined) {
-      updateData.winner_id = winnerId;
-    }
+    if (winnerId !== undefined) updateData.winner_id = winnerId;
     if (homeScoreLeg2 !== undefined) {
       updateData.home_score_leg2 = homeScoreLeg2;
     }
@@ -120,7 +253,9 @@ export const MatchRepository = {
       .update(updateData)
       .eq("id", matchId);
 
-    if (error) throw new Error(`Erro ao atualizar placar: ${error.message}`);
+    if (error) {
+      throw new Error(`Erro ao atualizar placar: ${error.message}`);
+    }
   },
 
   async clearMatchEvents(matchId: string): Promise<void> {
@@ -129,19 +264,23 @@ export const MatchRepository = {
       .delete()
       .eq("match_id", matchId);
 
-    if (error) throw new Error(`Erro ao limpar eventos da partida: ${error.message}`);
+    if (error) {
+      throw new Error(
+        `Erro ao limpar eventos da partida: ${error.message}`
+      );
+    }
   },
 
   async addMatchEvent(event: MatchEventInput): Promise<void> {
-    const { error } = await supabase
-      .from("match_events")
-      .insert({
-        match_id: event.match_id,
-        player_id: event.player_id,
-        team_id: event.team_id,
-        type: event.type,
-      });
+    const { error } = await supabase.from("match_events").insert({
+      match_id: event.match_id,
+      player_id: event.player_id,
+      team_id: event.team_id,
+      type: event.type,
+    });
 
-    if (error) throw new Error(`Erro ao registrar evento: ${error.message}`);
+    if (error) {
+      throw new Error(`Erro ao registrar evento: ${error.message}`);
+    }
   },
 };

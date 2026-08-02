@@ -17,15 +17,12 @@ export default function PartidaDetalhePage() {
 
   const [matchData, setMatchData] = useState<any>(null);
   
-  // Placares Jogo 1 / Único
   const [homeScore, setHomeScore] = useState<number | null>(0);
   const [awayScore, setAwayScore] = useState<number | null>(0);
 
-  // Placares Jogo 2 (Volta - opcional)
   const [homeScoreLeg2, setHomeScoreLeg2] = useState<number | null>(null);
   const [awayScoreLeg2, setAwayScoreLeg2] = useState<number | null>(null);
 
-  // Pênaltis (opcional)
   const [penaltiesHome, setPenaltiesHome] = useState<number | null>(null);
   const [penaltiesAway, setPenaltiesAway] = useState<number | null>(null);
 

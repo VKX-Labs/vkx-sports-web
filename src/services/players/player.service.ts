@@ -6,6 +6,7 @@ import type {
   CreatePlayerInput,
   UpdatePlayerInput,
 } from "@/types/player";
+import { getAuthenticatedUserId } from "@/services/auth.service";
 
 export class PlayerService {
   static async listPlayers(seasonId: string): Promise<Player[]> {
@@ -22,6 +23,22 @@ export class PlayerService {
   ): Promise<Player> {
     if (!input.name.trim()) {
       throw new Error("O nome do jogador é obrigatório.");
+    }
+
+    const userId = await getAuthenticatedUserId();
+
+    const { data: championship } = await supabase
+      .from("championships")
+      .select("user_id")
+      .eq("id", championshipId)
+      .single();
+
+    if (!championship) {
+      throw new Error("Campeonato não encontrado.");
+    }
+
+    if (championship.user_id !== userId) {
+      throw new Error("Você não tem permissão para adicionar jogadores neste campeonato.");
     }
 
     return PlayerRepository.createPlayer(championshipId, input);

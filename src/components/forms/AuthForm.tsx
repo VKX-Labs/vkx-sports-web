@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -17,6 +17,8 @@ import { signInWithEmail, signUpWithEmail } from "@/services/auth.service";
 
 export default function AuthForm({ initialMode = "register" }: { initialMode?: "login" | "register" }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
   const [isLogin, setIsLogin] = useState(initialMode === "login");
 
   const [form, setForm] = useState({
@@ -55,7 +57,7 @@ export default function AuthForm({ initialMode = "register" }: { initialMode?: "
         });
 
         setTimeout(() => {
-          router.push("/");
+          router.push(redirectTo);
         }, 800);
       } else {
         await signUpWithEmail(form.email, form.password, {
