@@ -27,6 +27,7 @@ export interface RoundMatch {
   penalties_home?: number | null;
   penalties_away?: number | null;
   status: string;
+  date?: string | null;
   home_team: RoundTeam;
   away_team: RoundTeam;
 }
@@ -150,6 +151,7 @@ export function useRodadasLocal(championshipId: string) {
               penalties_home: m.penalties_home ?? null,
               penalties_away: m.penalties_away ?? null,
               status: m.status,
+              date: m.date ?? null,
               home_team: m.home_team_id ? teamsMap[m.home_team_id] || defaultHome : defaultHome,
               away_team: m.away_team_id ? teamsMap[m.away_team_id] || defaultAway : defaultAway,
             };
@@ -199,6 +201,42 @@ export function useRodadasLocal(championshipId: string) {
   const removeRoundLocal = (roundId: string) => {
     setRounds((prev) => prev.filter((r) => r.id !== roundId));
     setSelectedRoundIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const deleteMatchLocal = (matchId: string) => {
+    setRounds((prevRounds) =>
+      prevRounds.map((round) => ({
+        ...round,
+        matches: round.matches.filter((m) => m.id !== matchId),
+      }))
+    );
+  };
+
+  const updateMatchLocal = (
+    updatedFields: { id: string; home_team_id?: string; away_team_id?: string },
+    homeTeamObj?: RoundTeam,
+    awayTeamObj?: RoundTeam
+  ) => {
+    setRounds((prevRounds) =>
+      prevRounds.map((round) => ({
+        ...round,
+        matches: round.matches.map((m) => {
+          if (m.id !== updatedFields.id) return m;
+
+          return {
+            ...m,
+            ...(updatedFields.home_team_id !== undefined
+              ? { home_team_id: updatedFields.home_team_id }
+              : {}),
+            ...(updatedFields.away_team_id !== undefined
+              ? { away_team_id: updatedFields.away_team_id }
+              : {}),
+            ...(homeTeamObj ? { home_team: homeTeamObj } : {}),
+            ...(awayTeamObj ? { away_team: awayTeamObj } : {}),
+          };
+        }),
+      }))
+    );
   };
 
   const updateMatchScore = async (
@@ -288,6 +326,8 @@ export function useRodadasLocal(championshipId: string) {
     refetchLocalRounds: fetchRoundsAndMatches,
     addRoundLocal,
     removeRoundLocal,
+    deleteMatchLocal,
+    updateMatchLocal,
     error: null,
   };
 }

@@ -154,7 +154,37 @@ export const MatchRepository = {
     return data;
   },
 
-  async deleteMatch(matchId: string) {
+  async updateMatch({
+    matchId,
+    homeTeamId,
+    awayTeamId,
+    date,
+  }: {
+    matchId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    date?: string | null;
+  }) {
+    if (homeTeamId === awayTeamId) {
+      throw new Error("O time mandante e visitante não podem ser iguais.");
+    }
+
+    const { data, error } = await supabase
+      .from("matches")
+      .update({
+        home_team_id: homeTeamId,
+        away_team_id: awayTeamId,
+        ...(date !== undefined ? { date } : {}),
+      })
+      .eq("id", matchId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteMatch(matchId: string): Promise<boolean> {
     await this.clearMatchEvents(matchId);
 
     const { error } = await supabase
@@ -162,19 +192,22 @@ export const MatchRepository = {
       .delete()
       .eq("id", matchId);
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(`Erro ao excluir partida: ${error.message}`);
+    }
+
     return true;
   },
 
   async getPlayoffMatches(seasonId: string): Promise<Match[]> {
     const { data, error } = await supabase
       .from("matches")
-      .select(`
-        *,
+      .select(
+        `*,
         home_team:teams!home_team_id(id, name, badge_url),
         away_team:teams!away_team_id(id, name, badge_url),
-        winner:teams!winner_id(id, name, badge_url)
-      `)
+        winner:teams!winner_id(id, name, badge_url)`
+      )
       .eq("season_id", seasonId)
       .not("phase", "is", null)
       .order("bracket_position", { ascending: true });
@@ -189,11 +222,11 @@ export const MatchRepository = {
   async getMatchesByRound(roundId: string): Promise<Match[]> {
     const { data, error } = await supabase
       .from("matches")
-      .select(`
-        *,
+      .select(
+        `*,
         home_team:teams!home_team_id(id, name, badge_url),
-        away_team:teams!away_team_id(id, name, badge_url)
-      `)
+        away_team:teams!away_team_id(id, name, badge_url)`
+      )
       .eq("round_id", roundId);
 
     if (error) {

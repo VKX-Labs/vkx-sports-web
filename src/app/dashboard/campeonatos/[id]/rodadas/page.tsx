@@ -7,6 +7,8 @@ import Button from "@/components/ui/button";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { MatchCard } from "./components/MatchCard";
 import { CreateMatchModal } from "./components/CreateMatchModal";
+import { EditMatchModal } from "./components/EditMatchModal";
+import type { EditMatchTarget } from "./components/EditMatchModal";
 
 export default function RodadasPage() {
   const {
@@ -25,7 +27,11 @@ export default function RodadasPage() {
     handleDeleteRound,
     handleRefresh,
     handleCreateMatch,
+    handleDeleteMatch,
+    handleUpdateMatch,
   } = useRodadasPageController();
+
+  const [matchToEdit, setMatchToEdit] = React.useState<EditMatchTarget | null>(null);
 
   if (loading) {
     return (
@@ -135,7 +141,11 @@ export default function RodadasPage() {
         {currentRound?.matches && currentRound.matches.length > 0 ? (
           currentRound.matches.map((match) => (
             <div key={match.id} className="relative group">
-              <MatchCard match={match} />
+              <MatchCard
+                match={match}
+                onEdit={setMatchToEdit}
+                onDelete={handleDeleteMatch}
+              />
             </div>
           ))
         ) : (
@@ -159,6 +169,14 @@ export default function RodadasPage() {
           onSave={handleCreateMatch}
         />
       )}
+
+      <EditMatchModal
+        isOpen={Boolean(matchToEdit)}
+        onClose={() => setMatchToEdit(null)}
+        teams={teams || []}
+        match={matchToEdit}
+        onSave={handleUpdateMatch}
+      />
     </div>
   );
 }

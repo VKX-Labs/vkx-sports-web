@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Shield } from "lucide-react";
+import { Shield, Pencil, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 interface Team {
@@ -10,20 +10,27 @@ interface Team {
   badge_url: string | null;
 }
 
-interface MatchCardProps {
-  match: {
-    id: string;
-    home_score: number | null;
-    away_score: number | null;
-    status: string;
-    home_team?: Team;
-    away_team?: Team;
-    homeTeam?: Team;
-    awayTeam?: Team;
-  };
+export interface MatchCardMatch {
+  id: string;
+  home_score: number | null;
+  away_score: number | null;
+  status: string;
+  home_team_id?: string | null;
+  away_team_id?: string | null;
+  date?: string | null;
+  home_team?: Team;
+  away_team?: Team;
+  homeTeam?: Team;
+  awayTeam?: Team;
 }
 
-export function MatchCard({ match }: MatchCardProps) {
+interface MatchCardProps {
+  match: MatchCardMatch;
+  onEdit?: (match: MatchCardMatch) => void;
+  onDelete?: (matchId: string) => void;
+}
+
+export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
   const router = useRouter();
   const params = useParams();
   const championshipId = params?.id;
@@ -63,8 +70,37 @@ export function MatchCard({ match }: MatchCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 grid grid-cols-[1fr_auto_1fr] md:flex md:items-center md:justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
+      className="relative w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 grid grid-cols-[1fr_auto_1fr] md:flex md:items-center md:justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
     >
+      {(onEdit || onDelete) && (
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(match);
+              }}
+              title="Editar partida"
+              className="p-1.5 rounded-lg bg-slate-950/90 border border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(match.id);
+              }}
+              title="Excluir partida"
+              className="p-1.5 rounded-lg bg-slate-950/90 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-end gap-2 md:gap-3 md:flex-1 md:text-right">
         <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[90px] md:max-w-[140px] group-hover:text-emerald-400 transition-colors">
           {homeName}

@@ -24,6 +24,8 @@ export function useRodadasPageController() {
     refetchLocalRounds,
     addRoundLocal,
     removeRoundLocal,
+    updateMatchLocal,
+    deleteMatchLocal,
   } = useRodadasLocal(championshipId);
 
   const { teams = [] } = useTeams(championshipId);
@@ -125,6 +127,66 @@ export function useRodadasPageController() {
     await reloadData();
   };
 
+  const handleDeleteMatch = async (matchId: string) => {
+    if (
+      !confirm(
+        "Tem certeza que deseja excluir esta partida? Todos os gols e estatísticas dela serão apagados."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await MatchRepository.deleteMatch(matchId);
+
+      if (typeof deleteMatchLocal === "function") {
+        deleteMatchLocal(matchId);
+      } else {
+        await refetchLocalRounds();
+      }
+    } catch (err: any) {
+      console.error("Erro ao deletar partida:", err);
+      alert(`Erro ao excluir partida: ${err.message}`);
+    }
+  };
+
+  const handleUpdateMatch = async ({
+    matchId,
+    homeTeamId,
+    awayTeamId,
+    date,
+  }: {
+    matchId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    date?: string | null;
+  }) => {
+    try {
+      await MatchRepository.updateMatch({
+        matchId,
+        homeTeamId,
+        awayTeamId,
+        date,
+      });
+
+      const homeTeamObj = teams.find((t) => t.id === homeTeamId);
+      const awayTeamObj = teams.find((t) => t.id === awayTeamId);
+
+      if (typeof updateMatchLocal === "function") {
+        updateMatchLocal(
+          { id: matchId, home_team_id: homeTeamId, away_team_id: awayTeamId },
+          homeTeamObj,
+          awayTeamObj
+        );
+      }
+
+      await reloadData();
+    } catch (err: any) {
+      console.error("Erro ao editar partida:", err);
+      alert(`Erro ao editar partida: ${err.message}`);
+    }
+  };
+
   const isKnockoutPhase = Boolean(
     currentRound?.name?.match(/(Oitavas|Quartas|Semi|Final|Playoff|Pré)/i)
   );
@@ -145,6 +207,8 @@ export function useRodadasPageController() {
     handleDeleteRound,
     handleRefresh,
     handleCreateMatch,
+    handleDeleteMatch,
+    handleUpdateMatch,
     updateMatchScore,
   };
 }
