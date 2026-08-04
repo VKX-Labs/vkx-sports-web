@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Team, CreateTeamPayload, UpdateTeamPayload } from "@/types/team";
+import { assertSeasonOwner, assertTeamOwner } from "@/services/ownership";
 
 export async function findTeamsByChampionshipId(
   championshipId: string
@@ -36,6 +37,8 @@ export async function findTeamsByChampionshipId(
 export async function insertTeam(
   teamData: CreateTeamPayload
 ): Promise<Team> {
+  await assertSeasonOwner(teamData.season_id);
+
   const { data, error } = await supabase
     .from("teams")
     .insert(teamData)
@@ -50,6 +53,8 @@ export async function updateTeamById(
   teamId: string,
   teamData: UpdateTeamPayload
 ): Promise<Team> {
+  await assertTeamOwner(teamId);
+
   const { data, error } = await supabase
     .from("teams")
     .update(teamData)

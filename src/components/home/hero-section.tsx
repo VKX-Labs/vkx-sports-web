@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/providers/auth-provider";
 import Button from "@/components/ui/button";
+import { routes } from "@/lib/routes";
 
 export default function HeroSection() {
   const router = useRouter();
@@ -17,9 +18,9 @@ export default function HeroSection() {
     if (authLoading) return;
 
     if (user) {
-      router.push("/dashboard/campeonatos");
+      router.push(routes.dashboard.championships());
     } else {
-      router.push("/login?redirect=/dashboard/campeonatos");
+      router.push(routes.public.login(routes.dashboard.championships()));
     }
   }
 
@@ -30,13 +31,13 @@ export default function HeroSection() {
       setLoading(true);
 
       if (user) {
-        router.push("/dashboard/campeonatos");
+        router.push(routes.dashboard.championships());
       } else {
-        router.push("/login?redirect=/dashboard/campeonatos");
+        router.push(routes.public.login(routes.dashboard.championships()));
       }
     } catch (error) {
       console.error("Erro ao navegar:", error);
-      router.push("/login");
+      router.push(routes.public.login());
     } finally {
       setLoading(false);
     }

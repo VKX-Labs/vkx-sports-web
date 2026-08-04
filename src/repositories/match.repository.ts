@@ -2,6 +2,11 @@ import { supabase } from "@/lib/supabase";
 import type { Match, MatchEventInput } from "@/types/match";
 import type { Player } from "@/types/player";
 import {
+  assertSeasonOwner,
+  assertMatchOwner,
+  assertRoundOwner,
+} from "@/services/ownership";
+import {
   TournamentGeneratorRepository,
   GenerateTournamentOptions,
 } from "./tournament-generator.repository";
@@ -55,6 +60,8 @@ export const MatchRepository = {
     name: string,
     roundNumber: number
   ) {
+    await assertSeasonOwner(seasonId);
+
     const { data, error } = await supabase
       .from("rounds")
       .insert([
@@ -72,6 +79,8 @@ export const MatchRepository = {
   },
 
   async deleteRound(roundId: string): Promise<boolean> {
+    await assertRoundOwner(roundId);
+
     try {
       const { data: matches, error: fetchMatchesError } = await supabase
         .from("matches")
@@ -132,6 +141,8 @@ export const MatchRepository = {
     homeTeamId: string;
     awayTeamId: string;
   }) {
+    await assertSeasonOwner(seasonId);
+
     if (homeTeamId === awayTeamId) {
       throw new Error("O time mandante e visitante não podem ser iguais.");
     }
@@ -165,6 +176,8 @@ export const MatchRepository = {
     awayTeamId: string;
     date?: string | null;
   }) {
+    await assertMatchOwner(matchId);
+
     if (homeTeamId === awayTeamId) {
       throw new Error("O time mandante e visitante não podem ser iguais.");
     }
@@ -185,6 +198,7 @@ export const MatchRepository = {
   },
 
   async deleteMatch(matchId: string): Promise<boolean> {
+    await assertMatchOwner(matchId);
     await this.clearMatchEvents(matchId);
 
     const { error } = await supabase
@@ -261,6 +275,8 @@ export const MatchRepository = {
     penaltiesHome?: number | null,
     penaltiesAway?: number | null
   ): Promise<void> {
+    await assertMatchOwner(matchId);
+
     const updateData: Partial<Match> = {
       home_score: homeScore,
       away_score: awayScore,
@@ -292,6 +308,8 @@ export const MatchRepository = {
   },
 
   async clearMatchEvents(matchId: string): Promise<void> {
+    await assertMatchOwner(matchId);
+
     const { error } = await supabase
       .from("match_events")
       .delete()
@@ -305,6 +323,8 @@ export const MatchRepository = {
   },
 
   async addMatchEvent(event: MatchEventInput): Promise<void> {
+    await assertMatchOwner(event.match_id);
+
     const { error } = await supabase.from("match_events").insert({
       match_id: event.match_id,
       player_id: event.player_id,

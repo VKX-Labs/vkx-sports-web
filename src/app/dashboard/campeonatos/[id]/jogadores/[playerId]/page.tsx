@@ -4,9 +4,11 @@ import React, { useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { useParams } from "next/navigation";
 import PlayerForm from "@/components/forms/PlayerForm";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function JogadoresPage() {
   const { id: championshipId } = useParams<{ id: string }>();
+  const { isOwner } = useWorkspace();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -22,13 +24,15 @@ export default function JogadoresPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          Novo Jogador
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            Novo Jogador
+          </button>
+        )}
       </div>
 
       <div className="w-full">
@@ -47,20 +51,24 @@ export default function JogadoresPage() {
         <p className="text-xs text-slate-500 mt-1 max-w-sm">
           Adicione seus atletas diretamente no campeonato de forma independente ou associe-os a equipes já criadas.
         </p>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
-        >
-          Cadastrar o primeiro jogador →
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
+          >
+            Cadastrar o primeiro jogador →
+          </button>
+        )}
       </div>
 
-      <PlayerForm
-        championshipId={championshipId}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {}}
-      />
+      {isOwner && (
+        <PlayerForm
+          championshipId={championshipId}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {}}
+        />
+      )}
     </div>
   );
 }

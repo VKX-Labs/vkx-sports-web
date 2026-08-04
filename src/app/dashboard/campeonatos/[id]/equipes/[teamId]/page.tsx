@@ -8,6 +8,8 @@ import { supabase } from "@/lib/supabase";
 import { PlayerService } from "@/services/players/player.service";
 import type { Player } from "@/types/player";
 import AddSquadPlayerModal from "@/components/forms/AddSquadPlayerModal";
+import { routes } from "@/lib/routes";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 interface TeamDetail {
   id: string;
@@ -23,6 +25,7 @@ export default function EquipeDetalhesPage() {
     teamId: string;
   }>();
 
+  const { isOwner } = useWorkspace();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [squad, setSquad] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +99,7 @@ export default function EquipeDetalhesPage() {
     <div className="space-y-6">
       <button
         onClick={() =>
-          router.push(`/dashboard/campeonatos/${championshipId}/equipes`)
+          router.push(routes.dashboard.teams(championshipId))
         }
         className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition hover:text-white"
       >
@@ -135,13 +138,15 @@ export default function EquipeDetalhesPage() {
           </div>
         </div>
 
-        <button
-          onClick={openModal}
-          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600 shrink-0"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" />
-          Adicionar Atleta
-        </button>
+        {isOwner && (
+          <button
+            onClick={openModal}
+            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600 shrink-0"
+          >
+            <Plus className="h-4 w-4 stroke-[3]" />
+            Adicionar Atleta
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -174,13 +179,15 @@ export default function EquipeDetalhesPage() {
                   </h3>
                 </div>
 
-                <button
-                  onClick={() => handleRemoveFromTeam(player.id)}
-                  title="Remover atleta"
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
-                >
-                  <UserMinus className="h-4 w-4" />
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => handleRemoveFromTeam(player.id)}
+                    title="Remover atleta"
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+                  >
+                    <UserMinus className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -199,13 +206,15 @@ export default function EquipeDetalhesPage() {
         )}
       </div>
 
-      <AddSquadPlayerModal
-        championshipId={championshipId}
-        teamId={teamId}
-        isOpen={isAddPlayerOpen}
-        onClose={closeModal}
-        onSuccess={loadTeamData}
-      />
+      {isOwner && (
+        <AddSquadPlayerModal
+          championshipId={championshipId}
+          teamId={teamId}
+          isOpen={isAddPlayerOpen}
+          onClose={closeModal}
+          onSuccess={loadTeamData}
+        />
+      )}
     </div>
   );
 }

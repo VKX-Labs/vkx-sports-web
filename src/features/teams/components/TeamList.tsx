@@ -9,9 +9,11 @@ import TeamCard from "@/features/teams/components/TeamCard";
 import TeamForm from "@/components/forms/TeamForm";
 import EditTeamModal from "@/components/forms/EditTeamModal";
 import type { Team } from "@/types/team";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function TeamList() {
   const { id } = useParams();
+  const { isOwner } = useWorkspace();
   const { teams, loading, refresh } = useTeams(id as string);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,14 +44,16 @@ export default function TeamList() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/5"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          Nova Equipe
-        </button>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/5"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            Nova Equipe
+          </button>
+        )}
       </div>
 
       <div className="w-full max-w-md relative">
@@ -79,7 +83,9 @@ export default function TeamList() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             {searchTerm
               ? "Nenhum resultado corresponde à sua busca por filtros."
-              : "Comece inserindo a primeira equipe da competição usando o botão superior."}
+              : isOwner
+                ? "Comece inserindo a primeira equipe da competição usando o botão superior."
+                : "Nenhuma equipe cadastrada neste campeonato."}
           </p>
         </div>
       ) : (
@@ -90,27 +96,32 @@ export default function TeamList() {
               team={team}
               championshipId={id as string}
               onEdit={handleOpenEdit}
+              canEdit={isOwner}
             />
           ))}
         </div>
       )}
 
-      <TeamForm
-        championshipId={id as string}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={refresh}
-      />
+      {isOwner && (
+        <TeamForm
+          championshipId={id as string}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={refresh}
+        />
+      )}
 
-      <EditTeamModal
-        team={editingTeam}
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingTeam(null);
-        }}
-        onSuccess={refresh}
-      />
+      {isOwner && (
+        <EditTeamModal
+          team={editingTeam}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingTeam(null);
+          }}
+          onSuccess={refresh}
+        />
+      )}
     </div>
   );
 }

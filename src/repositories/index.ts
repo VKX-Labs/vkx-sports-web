@@ -1,5 +1,6 @@
 export {
   findChampionshipById,
+  findChampionshipBySlug,
   findAllChampionships,
   countAllChampionships,
   findMyChampionships,

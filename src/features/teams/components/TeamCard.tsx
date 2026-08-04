@@ -4,14 +4,16 @@ import React from "react";
 import { Shield, Users, MapPin, Settings2 } from "lucide-react";
 import Link from "next/link";
 import type { Team } from "@/types/team";
+import { routes } from "@/lib/routes";
 
 interface TeamCardProps {
   team: Team;
   championshipId: string;
   onEdit: (team: Team) => void;
+  canEdit?: boolean;
 }
 
-export default function TeamCard({ team, championshipId, onEdit }: TeamCardProps) {
+export default function TeamCard({ team, championshipId, onEdit, canEdit = true }: TeamCardProps) {
   const playerLength = team._count?.players || 0;
 
   return (
@@ -54,17 +56,19 @@ export default function TeamCard({ team, championshipId, onEdit }: TeamCardProps
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-slate-800/60">
-        <button
-          type="button"
-          onClick={() => onEdit(team)}
-          className="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition border border-slate-800 cursor-pointer"
-        >
-          Editar
-        </button>
+      <div className={`grid gap-2 mt-5 pt-4 border-t border-slate-800/60 ${canEdit ? "grid-cols-2" : "grid-cols-1"}`}>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(team)}
+            className="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition border border-slate-800 cursor-pointer"
+          >
+            Editar
+          </button>
+        )}
 
         <Link
-          href={`/dashboard/campeonatos/${championshipId}/equipes/${team.id}`}
+          href={routes.dashboard.team(championshipId, team.id)}
           className="py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-bold text-xs transition text-center flex items-center justify-center gap-1.5 border border-emerald-500/20 hover:border-transparent"
         >
           <Settings2 className="w-3.5 h-3.5" />

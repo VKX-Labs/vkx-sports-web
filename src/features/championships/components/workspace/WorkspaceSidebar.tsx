@@ -1,28 +1,42 @@
+"use client";
+
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 
-import type { Championship } from "@/types/championship";
 import { championshipMenu } from "@/constants/championship-menu";
+import { routes } from "@/lib/routes";
 import WorkspaceChampionshipCard from "./ChampionshipCard";
+import { useWorkspace } from "./WorkspaceProvider";
 
-interface WorkspaceSidebarProps {
-  championship: Championship;
-}
-
-export default function WorkspaceSidebar({ championship }: WorkspaceSidebarProps) {
+export default function WorkspaceSidebar() {
   const { id } = useParams();
   const pathname = usePathname();
+  const championshipId = id as string;
+  const { championship, isOwner } = useWorkspace();
+
+  const visibleMenu = isOwner
+    ? championshipMenu
+    : championshipMenu.filter((item) => item.path !== "configuracoes");
 
   return (
     <aside className="w-64 border-r border-slate-800/80 bg-[#0b0f19] p-4 flex flex-col hidden md:flex shrink-0">
       <div className="space-y-6">
         <WorkspaceChampionshipCard championship={championship} />
 
+        {!isOwner && (
+          <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">
+            <span className="w-2 h-2 rounded-full bg-slate-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Modo de Leitura / Visitante
+            </span>
+          </div>
+        )}
+
         <nav className="space-y-1">
-          {championshipMenu.map((item) => {
+          {visibleMenu.map((item) => {
             const targetHref = item.path
-              ? `/dashboard/campeonatos/${id}/${item.path}`
-              : `/dashboard/campeonatos/${id}`;
+              ? routes.dashboard.section(championshipId, item.path)
+              : routes.dashboard.championship(championshipId);
 
             const isActive = pathname === targetHref;
 

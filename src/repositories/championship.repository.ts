@@ -1,11 +1,12 @@
 import { supabase } from "@/lib/supabase";
 import type { Championship } from "@/types/championship";
+import { assertChampionshipOwner } from "@/services/ownership";
 
 export async function findChampionshipById(id: string): Promise<Championship> {
   const { data, error } = await supabase
     .from("championships")
     .select(`
-      id, name, slug, description, logo_url, banner_url,
+      id, name, slug, description, logo_url, banner_url, user_id,
       seasons (
         id, name, status, modality, city, state, tournament_type, max_teams
       )
@@ -17,6 +18,22 @@ export async function findChampionshipById(id: string): Promise<Championship> {
   if (!data) throw new Error("Campeonato não encontrado.");
 
   return data as unknown as Championship;
+}
+
+export async function findChampionshipBySlug(slug: string): Promise<Championship | null> {
+  const { data, error } = await supabase
+    .from("championships")
+    .select(`
+      id, name, slug, description, logo_url, banner_url, user_id,
+      seasons (
+        id, name, status, modality, city, state, tournament_type, max_teams
+      )
+    `)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as unknown as Championship) ?? null;
 }
 
 export async function findAllChampionships() {
@@ -85,6 +102,8 @@ export async function insertChampionship(
 }
 
 export async function deleteChampionshipById(id: string): Promise<boolean> {
+  await assertChampionshipOwner(id);
+
   const { error } = await supabase
     .from("championships")
     .delete()

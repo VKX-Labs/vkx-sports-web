@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { assertSeasonOwner } from "@/services/ownership";
 
 export interface Round {
   id: string;
@@ -85,6 +86,8 @@ export function useRounds(championshipIdOrSeasonId: string) {
         if (seasonData?.id) {
           seasonId = seasonData.id;
         }
+
+        await assertSeasonOwner(seasonId);
 
         const nextRoundNumber = rounds.length + 1;
         const name = customName || `${nextRoundNumber}ª Rodada`;

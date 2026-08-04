@@ -18,6 +18,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import ChampionshipFormModal from "@/features/championships/components/ChampionshipFormModal";
 import { useChampionships } from "@/features/championships/hooks/useChampionships";
 import { formatTournamentType } from "@/utils";
+import { routes } from "@/lib/routes";
 
 export default function ChampionshipList() {
   const {
@@ -141,7 +142,7 @@ export default function ChampionshipList() {
                   </button>
 
                   <Link
-                    href={`/dashboard/campeonatos/${champ.id}`}
+                    href={routes.dashboard.championship(champ.id)}
                     className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 hover:text-slate-950"
                   >
                     Gerenciar Workspace

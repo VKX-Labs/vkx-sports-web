@@ -3,6 +3,7 @@ import { generateRoundRobin, GenerationTeam } from "@/utils/generators/round-rob
 import { generateKnockoutBracket } from "@/utils/generators/bracket";
 import { normalizeTournamentType } from "@/utils";
 import { TournamentType, KnockoutRules, isPhaseTwoLegged, PlayoffPhase } from "@/types/tournament";
+import { assertSeasonOwner } from "@/services/ownership";
 
 export interface GenerateTournamentOptions {
   tournamentType?: TournamentType | "ROUND_ROBIN";
@@ -33,6 +34,8 @@ export const TournamentGeneratorRepository = {
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
+    await assertSeasonOwner(seasonId);
+
     const { error: seasonError } = await supabase
       .from("seasons")
       .update({ tournament_type: "MATA_MATA" })
@@ -167,6 +170,8 @@ export const TournamentGeneratorRepository = {
     seasonId: string,
     options: GenerateTournamentOptions = {}
   ) {
+    await assertSeasonOwner(seasonId);
+
     const rawType = options.tournamentType || "PONTOS_CORRIDOS";
     const canonicalType = rawType === "ROUND_ROBIN" ? "PONTOS_CORRIDOS" : normalizeTournamentType(rawType);
 

@@ -8,8 +8,10 @@ import { MatchScoreCard } from "@/components/match/MatchScoreCard";
 import { MatchEventsSection } from "@/components/match/MatchEventsSection";
 import { MatchRepository } from "@/repositories/match.repository";
 import { useTeams } from "@/hooks/useTeams";
+import { routes } from "@/lib/routes";
 import { EditMatchModal } from "../components/EditMatchModal";
 import type { EditMatchPayload, EditMatchTarget } from "../components/EditMatchModal";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function PartidaDetalhePage() {
   const router = useRouter();
@@ -17,6 +19,7 @@ export default function PartidaDetalhePage() {
   const matchId = params?.matchId as string;
   const championshipId = params?.id as string;
 
+  const { isOwner } = useWorkspace();
   const { teams = [] } = useTeams(championshipId);
 
   const [loading, setLoading] = useState(true);
@@ -140,7 +143,7 @@ export default function PartidaDetalhePage() {
 
     try {
       await MatchRepository.deleteMatch(matchId);
-      router.push(`/dashboard/campeonatos/${championshipId}/rodadas`);
+      router.push(routes.dashboard.matches(championshipId));
     } catch (err: any) {
       console.error("Erro ao excluir partida:", err);
       alert(`Erro ao excluir partida: ${err.message}`);
@@ -164,43 +167,49 @@ export default function PartidaDetalhePage() {
             onClick={() => router.back()}
             className="hover:text-zinc-200 transition-colors"
           >
-            Rodadas
+            Jogos
           </button>
           <span className="text-zinc-600">/</span>
           <span className="text-emerald-400 font-semibold">Match Center</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <button
-            onClick={() => setMatchToEdit(matchData)}
-            title="Editar times e data do jogo"
-            className="md:h-10 h-11 px-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-bold text-xs rounded-lg transition-all flex items-center gap-2"
-          >
-            <Pencil className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Editar Times/Jogo</span>
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => setMatchToEdit(matchData)}
+              title="Editar times e data do jogo"
+              className="md:h-10 h-11 px-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-bold text-xs rounded-lg transition-all flex items-center gap-2"
+            >
+              <Pencil className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Editar Times/Jogo</span>
+            </button>
+          )}
 
-          <button
-            onClick={handleDeleteMatch}
-            title="Excluir partida"
-            className="md:h-10 h-11 px-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-400 font-bold text-xs rounded-lg transition-all flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Excluir Partida</span>
-          </button>
+          {isOwner && (
+            <button
+              onClick={handleDeleteMatch}
+              title="Excluir partida"
+              className="md:h-10 h-11 px-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-400 font-bold text-xs rounded-lg transition-all flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Excluir Partida</span>
+            </button>
+          )}
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="md:h-10 h-11 px-5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4" />
-            )}
-            {saving ? "Salvando..." : "Finalizar & Salvar Súmula"}
-          </button>
+          {isOwner && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="md:h-10 h-11 px-5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              {saving ? "Salvando..." : "Finalizar & Salvar Súmula"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -212,6 +221,7 @@ export default function PartidaDetalhePage() {
         setHomeScore={setHomeScore}
         setAwayScore={setAwayScore}
         onDeclareWO={handleDeclareWO}
+        readOnly={!isOwner}
       />
 
       <MatchEventsSection
@@ -222,15 +232,18 @@ export default function PartidaDetalhePage() {
         events={events}
         onAddEvent={(newEvent) => setEvents([...events, newEvent])}
         onRemoveEvent={(id) => setEvents(events.filter((e) => e.id !== id))}
+        readOnly={!isOwner}
       />
 
-      <EditMatchModal
-        isOpen={Boolean(matchToEdit)}
-        onClose={() => setMatchToEdit(null)}
-        teams={teams}
-        match={matchToEdit}
-        onSave={handleEditSave}
-      />
+      {isOwner && (
+        <EditMatchModal
+          isOpen={Boolean(matchToEdit)}
+          onClose={() => setMatchToEdit(null)}
+          teams={teams}
+          match={matchToEdit}
+          onSave={handleEditSave}
+        />
+      )}
     </div>
   );
 }

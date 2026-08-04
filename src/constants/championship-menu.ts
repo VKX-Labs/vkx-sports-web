@@ -7,8 +7,15 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
+import type { ChampionshipSection } from "@/lib/routes";
 
-export const championshipMenu = [
+export interface ChampionshipMenuItem {
+  label: string;
+  path: ChampionshipSection | "";
+  icon: typeof LayoutDashboard;
+}
+
+export const championshipMenu: ChampionshipMenuItem[] = [
   {
     label: "Resumo",
     path: "",
@@ -25,8 +32,8 @@ export const championshipMenu = [
     icon: UserSquare2,
   },
   {
-    label: "Rodadas e Jogos",
-    path: "rodadas",
+    label: "Jogos",
+    path: "jogos",
     icon: Calendar,
   },
   {

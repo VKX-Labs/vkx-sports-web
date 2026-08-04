@@ -3,6 +3,7 @@
 import React from "react";
 import { Shield, Pencil, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
+import { routes } from "@/lib/routes";
 
 interface Team {
   id: string;
@@ -50,7 +51,7 @@ export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
 
   const handleCardClick = () => {
     if (championshipId && match.id) {
-      router.push(`/dashboard/campeonatos/${championshipId}/rodadas/${match.id}`);
+      router.push(routes.dashboard.match(championshipId as string, match.id));
     }
   };
 

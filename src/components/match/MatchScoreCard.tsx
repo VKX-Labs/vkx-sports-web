@@ -15,6 +15,7 @@ interface MatchScoreCardProps {
   setHomeScore: (score: number | null) => void;
   setAwayScore: (score: number | null) => void;
   onDeclareWO: (winner: "home" | "away" | "double_wo") => void;
+  readOnly?: boolean;
 }
 
 export function MatchScoreCard({
@@ -25,6 +26,7 @@ export function MatchScoreCard({
   setHomeScore,
   setAwayScore,
   onDeclareWO,
+  readOnly = false,
 }: MatchScoreCardProps) {
   const [showWoMenu, setShowWoMenu] = useState(false);
   const [homeImgError, setHomeImgError] = useState(false);
@@ -70,18 +72,22 @@ export function MatchScoreCard({
             <input
               type="number"
               min="0"
+              readOnly={readOnly}
+              disabled={readOnly}
               value={homeScore ?? ""}
               onChange={(e) => setHomeScore(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0"
+              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0 disabled:cursor-not-allowed"
               placeholder="0"
             />
             <span className="text-zinc-600 font-bold text-sm select-none">:</span>
             <input
               type="number"
               min="0"
+              readOnly={readOnly}
+              disabled={readOnly}
               value={awayScore ?? ""}
               onChange={(e) => setAwayScore(e.target.value === "" ? null : Number(e.target.value))}
-              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0"
+              className="w-10 md:w-10 text-center text-xl sm:text-2xl font-black font-mono text-zinc-100 bg-transparent focus:outline-none focus:text-emerald-400 py-2.5 md:py-0 disabled:cursor-not-allowed"
               placeholder="0"
             />
           </div>
@@ -110,8 +116,9 @@ export function MatchScoreCard({
       <div className="flex justify-end relative">
         <button
           type="button"
+          disabled={readOnly}
           onClick={() => setShowWoMenu(!showWoMenu)}
-          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 py-0.5 px-2 rounded hover:bg-zinc-900"
+          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 py-0.5 px-2 rounded hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <AlertCircle className="w-3 h-3" />
           <span>Atribuir W.O. (Exceção)</span>

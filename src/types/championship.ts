@@ -19,5 +19,6 @@ export interface Championship {
   logo_url?: string | null;
   banner_url?: string | null;
   created_at?: string;
+  user_id?: string | null;
   seasons: Season[];
 }

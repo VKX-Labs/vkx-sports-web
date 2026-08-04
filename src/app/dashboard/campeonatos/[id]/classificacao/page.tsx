@@ -10,10 +10,13 @@ import { TournamentType, KnockoutRules } from "@/types/tournament";
 import { normalizeTournamentType } from "@/utils";
 import { Table, Trophy, Loader2, Settings2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { assertChampionshipOwner } from "@/services/ownership";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function ClassificacaoPage() {
   const params = useParams();
   const championshipId = params?.id as string;
+  const { isOwner } = useWorkspace();
 
   const {
     activeTab,
@@ -42,6 +45,8 @@ export default function ClassificacaoPage() {
     }
 
     try {
+      await assertChampionshipOwner(championshipId);
+
       const { data: seasonData } = await supabase
         .from("seasons")
         .select("id")
@@ -63,6 +68,8 @@ export default function ClassificacaoPage() {
     setKnockoutRules(newRules);
 
     try {
+      await assertChampionshipOwner(championshipId);
+
       const { data: seasonData } = await supabase
         .from("seasons")
         .select("id")
@@ -141,29 +148,31 @@ export default function ClassificacaoPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 border border-zinc-800 rounded-xl self-start sm:self-auto">
-          <Settings2 className="w-3.5 h-3.5 text-zinc-400" />
-          <select
-            value={normalizedTournamentType}
-            onChange={(e) =>
-              handleTournamentTypeChange(e.target.value as TournamentType)
-            }
-            className="bg-transparent text-xs text-zinc-300 font-medium focus:outline-none cursor-pointer"
-          >
-            <option value="PONTOS_CORRIDOS" className="bg-zinc-900 text-zinc-200">
-              Pontos Corridos
-            </option>
-            <option value="GRUPOS_MATA_MATA" className="bg-zinc-900 text-zinc-200">
-              Fase de Grupos
-            </option>
-            <option value="COPA" className="bg-zinc-900 text-zinc-200">
-              Formato Copa
-            </option>
-            <option value="MATA_MATA" className="bg-zinc-900 text-zinc-200">
-              Apenas Mata-Mata
-            </option>
-          </select>
-        </div>
+        {isOwner && (
+          <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 border border-zinc-800 rounded-xl self-start sm:self-auto">
+            <Settings2 className="w-3.5 h-3.5 text-zinc-400" />
+            <select
+              value={normalizedTournamentType}
+              onChange={(e) =>
+                handleTournamentTypeChange(e.target.value as TournamentType)
+              }
+              className="bg-transparent text-xs text-zinc-300 font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="PONTOS_CORRIDOS" className="bg-zinc-900 text-zinc-200">
+                Pontos Corridos
+              </option>
+              <option value="GRUPOS_MATA_MATA" className="bg-zinc-900 text-zinc-200">
+                Fase de Grupos
+              </option>
+              <option value="COPA" className="bg-zinc-900 text-zinc-200">
+                Formato Copa
+              </option>
+              <option value="MATA_MATA" className="bg-zinc-900 text-zinc-200">
+                Apenas Mata-Mata
+              </option>
+            </select>
+          </div>
+        )}
       </div>
 
       {effectiveTab === "table" ? (
@@ -185,7 +194,7 @@ export default function ClassificacaoPage() {
         <BracketView
           matches={playoffMatches}
           rules={knockoutRules}
-          onUpdateRules={handleUpdateRules}
+          onUpdateRules={isOwner ? handleUpdateRules : undefined}
         />
       )}
     </div>

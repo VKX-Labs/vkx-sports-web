@@ -10,14 +10,15 @@ import {
   Globe,
   CreditCard,
 } from "lucide-react";
+import { routes } from "@/lib/routes";
 
 const MENU_ITEMS = [
-  { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { id: "campeonatos", label: "Campeonatos", href: "/dashboard/campeonatos", icon: Trophy },
+  { id: "dashboard", label: "Dashboard", href: routes.dashboard.home(), icon: LayoutDashboard },
+  { id: "campeonatos", label: "Campeonatos", href: routes.dashboard.championships(), icon: Trophy },
   { id: "equipes", label: "Equipes", href: "/dashboard/equipes", icon: Users },
   { id: "jogadores", label: "Jogadores", href: "/dashboard/jogadores", icon: UserSquare2 },
-  { id: "organizador", label: "Organizador", href: "/dashboard/organizador", icon: Globe },
-  { id: "assinatura", label: "Assinatura", href: "/dashboard/assinatura", icon: CreditCard },
+  { id: "organizador", label: "Organizador", href: routes.dashboard.organizers(), icon: Globe },
+  { id: "assinatura", label: "Assinatura", href: routes.dashboard.subscription(), icon: CreditCard },
 ];
 
 interface DashboardSidebarProps {

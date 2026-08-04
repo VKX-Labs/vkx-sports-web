@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import type { Championship } from "@/types/championship";
+import { routes } from "@/lib/routes";
 
 interface ChampionshipCardProps {
   championship: Championship;
@@ -13,7 +14,7 @@ export default function WorkspaceChampionshipCard({ championship }: Championship
   return (
     <div className="space-y-4">
       <Link
-        href="/dashboard/campeonatos"
+        href={routes.dashboard.championships()}
         className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition group"
       >
         <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition" />

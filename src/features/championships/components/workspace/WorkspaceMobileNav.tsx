@@ -3,29 +3,37 @@
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 
-import type { Championship } from "@/types/championship";
 import { championshipMenu } from "@/constants/championship-menu";
+import { routes } from "@/lib/routes";
+import { useWorkspace } from "./WorkspaceProvider";
 
-interface WorkspaceMobileNavProps {
-  championship: Championship;
-}
-
-export default function WorkspaceMobileNav({ championship }: WorkspaceMobileNavProps) {
+export default function WorkspaceMobileNav() {
   const { id } = useParams();
   const pathname = usePathname();
+  const championshipId = id as string;
+  const { championship, isOwner } = useWorkspace();
+
+  const visibleMenu = isOwner
+    ? championshipMenu
+    : championshipMenu.filter((item) => item.path !== "configuracoes");
 
   return (
     <nav className="md:hidden bg-[#0b0f19] border-b border-slate-800/80 shrink-0">
       <div className="flex items-center gap-2 px-4 pt-3 pb-1">
         <span className="text-xs font-bold text-white truncate">{championship.name}</span>
+        {!isOwner && (
+          <span className="shrink-0 rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            Leitura
+          </span>
+        )}
       </div>
       <div className="overflow-x-auto whitespace-nowrap flex scrollbar-none px-3 pb-2 gap-1"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {championshipMenu.map((item) => {
+        {visibleMenu.map((item) => {
           const targetHref = item.path
-            ? `/dashboard/campeonatos/${id}/${item.path}`
-            : `/dashboard/campeonatos/${id}`;
+            ? routes.dashboard.section(championshipId, item.path)
+            : routes.dashboard.championship(championshipId);
 
           const isActive = pathname === targetHref;
 

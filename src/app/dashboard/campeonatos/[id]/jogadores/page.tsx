@@ -9,9 +9,11 @@ import { PlayerService } from "@/services/players/player.service";
 import { supabase } from "@/lib/supabase";
 import type { Player } from "@/types/player";
 import type { Team } from "@/types/team";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function JogadoresPage() {
   const { id: championshipId } = useParams<{ id: string }>();
+  const { isOwner } = useWorkspace();
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -66,13 +68,15 @@ export default function JogadoresPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          Novo Jogador
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            Novo Jogador
+          </button>
+        )}
       </div>
 
       <div className="relative w-full max-w-md">
@@ -102,9 +106,11 @@ export default function JogadoresPage() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm">
             {searchTerm
               ? "Tente buscar com outro termo."
-              : "Adicione seus atletas diretamente no campeonato de forma independente ou associe-os a equipes já criadas."}
+              : isOwner
+                ? "Adicione seus atletas diretamente no campeonato de forma independente ou associe-os a equipes já criadas."
+                : "Nenhum atleta cadastrado neste campeonato."}
           </p>
-          {!searchTerm && (
+          {!searchTerm && isOwner && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
@@ -118,8 +124,12 @@ export default function JogadoresPage() {
           {filteredPlayers.map((player) => (
             <div
               key={player.id}
-              onClick={() => setSelectedPlayerForEdit(player)}
-              className="group bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3.5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/5"
+              onClick={() => isOwner && setSelectedPlayerForEdit(player)}
+              className={`group bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3.5 transition-all duration-200 ${
+                isOwner
+                  ? "cursor-pointer hover:shadow-lg hover:shadow-emerald-500/5"
+                  : "cursor-default"
+              }`}
             >
               <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:border-emerald-500/30 transition">
                 {player.photo_url ? (
@@ -146,20 +156,24 @@ export default function JogadoresPage() {
         </div>
       )}
 
-      <PlayerForm
-        championshipId={championshipId}
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={fetchData}
-      />
+      {isOwner && (
+        <PlayerForm
+          championshipId={championshipId}
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={fetchData}
+        />
+      )}
 
-      <EditPlayerModal
-        player={selectedPlayerForEdit}
-        teams={teams}
-        isOpen={!!selectedPlayerForEdit}
-        onClose={() => setSelectedPlayerForEdit(null)}
-        onSuccess={fetchData}
-      />
+      {isOwner && (
+        <EditPlayerModal
+          player={selectedPlayerForEdit}
+          teams={teams}
+          isOpen={!!selectedPlayerForEdit}
+          onClose={() => setSelectedPlayerForEdit(null)}
+          onSuccess={fetchData}
+        />
+      )}
     </div>
   );
 }
