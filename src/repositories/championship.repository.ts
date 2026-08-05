@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Championship } from "@/types/championship";
 import { assertChampionshipOwner } from "@/services/ownership";
+import { getAuthenticatedUserId } from "@/services/auth.service";
 
 export async function findChampionshipById(id: string): Promise<Championship> {
   const { data, error } = await supabase
@@ -63,29 +64,75 @@ export async function countAllChampionships(): Promise<number> {
   return count ?? 0;
 }
 
-export async function findMyChampionships() {
-  const { data, error } = await supabase
+const MY_CHAMPIONSHIPS_SELECT = `
+  id,
+  name,
+  slug,
+  user_id,
+  created_at,
+  seasons (
+    id,
+    name,
+    status,
+    modality,
+    city,
+    state,
+    tournament_type,
+    max_teams
+  )
+`;
+
+export async function findMyChampionships(): Promise<Championship[]> {
+  const userId = await getAuthenticatedUserId();
+
+  const { data: owned, error: ownedError } = await supabase
     .from("championships")
-    .select(`
-      id,
-      name,
-      slug,
-      created_at,
-      seasons (
-        id,
-        name,
-        status,
-        modality,
-        city,
-        state,
-        tournament_type,
-        max_teams
-      )
-    `)
+    .select(MY_CHAMPIONSHIPS_SELECT)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
-  return data;
+  if (ownedError) throw new Error(ownedError.message);
+
+  const { data: memberships, error: membershipsError } = await supabase
+    .from("championship_members")
+    .select("championship_id")
+    .eq("user_id", userId);
+
+  if (membershipsError) throw new Error(membershipsError.message);
+
+  const memberIds = Array.from(
+    new Set(
+      (memberships ?? []).map(
+        (membership) => membership.championship_id as string
+      )
+    )
+  );
+
+  let memberChampionships: Championship[] = [];
+
+  if (memberIds.length > 0) {
+    const { data, error } = await supabase
+      .from("championships")
+      .select(MY_CHAMPIONSHIPS_SELECT)
+      .in("id", memberIds)
+      .order("created_at", { ascending: false });
+
+    if (error) throw new Error(error.message);
+    memberChampionships = (data ?? []) as Championship[];
+  }
+
+  const ownedChampionships = (owned ?? []) as Championship[];
+  const byId = new Map<string, Championship>();
+
+  for (const championship of [...memberChampionships, ...ownedChampionships]) {
+    byId.set(championship.id, championship);
+  }
+
+  return Array.from(byId.values()).sort(
+    (a, b) =>
+      new Date(b.created_at ?? 0).getTime() -
+      new Date(a.created_at ?? 0).getTime()
+  );
 }
 
 export async function insertChampionship(

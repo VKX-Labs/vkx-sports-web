@@ -7,14 +7,15 @@ import { championshipMenu } from "@/constants/championship-menu";
 import { routes } from "@/lib/routes";
 import WorkspaceChampionshipCard from "./ChampionshipCard";
 import { useWorkspace } from "./WorkspaceProvider";
+import FollowButton from "@/features/championships/components/FollowButton";
 
 export default function WorkspaceSidebar() {
   const { id } = useParams();
   const pathname = usePathname();
   const championshipId = id as string;
-  const { championship, isOwner } = useWorkspace();
+  const { championship, isOwner, canEdit, myRole } = useWorkspace();
 
-  const visibleMenu = isOwner
+  const visibleMenu = canEdit
     ? championshipMenu
     : championshipMenu.filter((item) => item.path !== "configuracoes");
 
@@ -23,14 +24,41 @@ export default function WorkspaceSidebar() {
       <div className="space-y-6">
         <WorkspaceChampionshipCard championship={championship} />
 
-        {!isOwner && (
-          <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">
-            <span className="w-2 h-2 rounded-full bg-slate-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Modo de Leitura / Visitante
-            </span>
+        <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {isOwner ? (
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 truncate">
+                  Criador do Campeonato
+                </span>
+              </span>
+            ) : canEdit ? (
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
+                  {myRole === "ADMIN" ? "Co-organizador" : "Editor"}
+                </span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">
+                  Modo de Leitura / Visitante
+                </span>
+              </span>
+            )}
           </div>
-        )}
+
+          {!isOwner && (
+            <FollowButton
+              championshipId={championship.id}
+              championshipOwnerId={championship.user_id}
+              compact
+              className="w-full"
+            />
+          )}
+        </div>
 
         <nav className="space-y-1">
           {visibleMenu.map((item) => {

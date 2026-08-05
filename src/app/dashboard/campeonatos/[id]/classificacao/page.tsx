@@ -10,13 +10,13 @@ import { TournamentType, KnockoutRules } from "@/types/tournament";
 import { normalizeTournamentType } from "@/utils";
 import { Table, Trophy, Loader2, Settings2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { assertChampionshipOwner } from "@/services/ownership";
+import { assertChampionshipEditor } from "@/services/ownership";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function ClassificacaoPage() {
   const params = useParams();
   const championshipId = params?.id as string;
-  const { isOwner } = useWorkspace();
+  const { canEdit } = useWorkspace();
 
   const {
     activeTab,
@@ -45,7 +45,7 @@ export default function ClassificacaoPage() {
     }
 
     try {
-      await assertChampionshipOwner(championshipId);
+      await assertChampionshipEditor(championshipId);
 
       const { data: seasonData } = await supabase
         .from("seasons")
@@ -68,7 +68,7 @@ export default function ClassificacaoPage() {
     setKnockoutRules(newRules);
 
     try {
-      await assertChampionshipOwner(championshipId);
+      await assertChampionshipEditor(championshipId);
 
       const { data: seasonData } = await supabase
         .from("seasons")
@@ -148,7 +148,7 @@ export default function ClassificacaoPage() {
           )}
         </div>
 
-        {isOwner && (
+        {canEdit && (
           <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 border border-zinc-800 rounded-xl self-start sm:self-auto">
             <Settings2 className="w-3.5 h-3.5 text-zinc-400" />
             <select
@@ -194,7 +194,7 @@ export default function ClassificacaoPage() {
         <BracketView
           matches={playoffMatches}
           rules={knockoutRules}
-          onUpdateRules={isOwner ? handleUpdateRules : undefined}
+          onUpdateRules={canEdit ? handleUpdateRules : undefined}
         />
       )}
     </div>

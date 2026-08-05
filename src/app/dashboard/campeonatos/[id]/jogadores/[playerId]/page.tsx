@@ -8,7 +8,7 @@ import { useWorkspace } from "@/features/championships/components/workspace/Work
 
 export default function JogadoresPage() {
   const { id: championshipId } = useParams<{ id: string }>();
-  const { isOwner } = useWorkspace();
+  const { canEdit } = useWorkspace();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -24,7 +24,7 @@ export default function JogadoresPage() {
           </p>
         </div>
 
-        {isOwner && (
+        {canEdit && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
@@ -51,7 +51,7 @@ export default function JogadoresPage() {
         <p className="text-xs text-slate-500 mt-1 max-w-sm">
           Adicione seus atletas diretamente no campeonato de forma independente ou associe-os a equipes já criadas.
         </p>
-        {isOwner && (
+        {canEdit && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
@@ -61,7 +61,7 @@ export default function JogadoresPage() {
         )}
       </div>
 
-      {isOwner && (
+      {canEdit && (
         <PlayerForm
           championshipId={championshipId}
           isOpen={isModalOpen}

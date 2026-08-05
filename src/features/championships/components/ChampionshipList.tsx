@@ -17,6 +17,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import ChampionshipFormModal from "@/features/championships/components/ChampionshipFormModal";
 import { useChampionships } from "@/features/championships/hooks/useChampionships";
+import { useAuth } from "@/providers/auth-provider";
 import { formatTournamentType } from "@/utils";
 import { routes } from "@/lib/routes";
 
@@ -28,6 +29,7 @@ export default function ChampionshipList() {
     deleteChampionship,
     refresh,
   } = useChampionships();
+  const { user } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -128,22 +130,24 @@ export default function ChampionshipList() {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    disabled={deletingId === champ.id}
-                    onClick={() => handleDelete(champ.id, champ.name)}
-                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-2.5 text-slate-400 transition hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-400 disabled:opacity-50"
-                  >
-                    {deletingId === champ.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
+                  {champ.user_id && champ.user_id === user?.id && (
+                    <button
+                      type="button"
+                      disabled={deletingId === champ.id}
+                      onClick={() => handleDelete(champ.id, champ.name)}
+                      className="rounded-xl border border-slate-800 bg-slate-900/50 p-2.5 text-slate-400 transition hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-400 disabled:opacity-50"
+                    >
+                      {deletingId === champ.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
 
                   <Link
                     href={routes.dashboard.championship(champ.id)}
-                    className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 hover:text-slate-950"
+                    className="ml-auto flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 hover:text-slate-950"
                   >
                     Gerenciar Workspace
                     <ArrowRight className="h-4 w-4" />

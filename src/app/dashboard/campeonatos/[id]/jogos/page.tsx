@@ -12,7 +12,7 @@ import type { EditMatchTarget } from "./components/EditMatchModal";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function RodadasPage() {
-  const { isOwner } = useWorkspace();
+  const { canEdit } = useWorkspace();
 
   const {
     loading,
@@ -52,12 +52,12 @@ export default function RodadasPage() {
           Nenhum confronto ou rodada encontrada
         </h3>
         <p className="text-sm text-zinc-400 mb-6 max-w-md">
-          {isOwner
+          {canEdit
             ? "Você pode criar uma rodada manualmente para montar seus jogos ou atualizar a página."
             : "Este campeonato ainda não possui confrontos cadastrados."}
         </p>
 
-        {isOwner && (
+        {canEdit && (
           <div className="flex items-center gap-3">
             <Button
               onClick={handleAddRound}
@@ -105,7 +105,7 @@ export default function RodadasPage() {
             ))}
           </select>
 
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={handleAddRound}
               disabled={isCreatingRound}
@@ -117,7 +117,7 @@ export default function RodadasPage() {
             </button>
           )}
 
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={handleDeleteRound}
               disabled={isDeletingRound || !currentRound}
@@ -128,7 +128,7 @@ export default function RodadasPage() {
             </button>
           )}
 
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={() => setIsModalOpen(true)}
               disabled={!currentRound}
@@ -156,15 +156,15 @@ export default function RodadasPage() {
             <div key={match.id} className="relative group">
               <MatchCard
                 match={match}
-                onEdit={isOwner ? setMatchToEdit : undefined}
-                onDelete={isOwner ? handleDeleteMatch : undefined}
+                onEdit={canEdit ? setMatchToEdit : undefined}
+                onDelete={canEdit ? handleDeleteMatch : undefined}
               />
             </div>
           ))
         ) : (
           <div className="flex flex-col items-center justify-center py-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/80 text-zinc-500 text-xs font-mono gap-3">
             <p>Nenhuma partida agendada para esta rodada.</p>
-            {isOwner && (
+            {canEdit && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="text-emerald-400 hover:underline font-sans text-xs flex items-center gap-1 cursor-pointer"
@@ -176,7 +176,7 @@ export default function RodadasPage() {
         )}
       </div>
 
-      {isOwner && currentRound && (
+      {canEdit && currentRound && (
         <CreateMatchModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
@@ -185,7 +185,7 @@ export default function RodadasPage() {
         />
       )}
 
-      {isOwner && (
+      {canEdit && (
         <EditMatchModal
           isOpen={Boolean(matchToEdit)}
           onClose={() => setMatchToEdit(null)}

@@ -19,7 +19,7 @@ export default function PartidaDetalhePage() {
   const matchId = params?.matchId as string;
   const championshipId = params?.id as string;
 
-  const { isOwner } = useWorkspace();
+  const { canEdit } = useWorkspace();
   const { teams = [] } = useTeams(championshipId);
 
   const [loading, setLoading] = useState(true);
@@ -174,7 +174,7 @@ export default function PartidaDetalhePage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={() => setMatchToEdit(matchData)}
               title="Editar times e data do jogo"
@@ -185,7 +185,7 @@ export default function PartidaDetalhePage() {
             </button>
           )}
 
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={handleDeleteMatch}
               title="Excluir partida"
@@ -196,7 +196,7 @@ export default function PartidaDetalhePage() {
             </button>
           )}
 
-          {isOwner && (
+          {canEdit && (
             <button
               onClick={handleSave}
               disabled={saving}
@@ -221,7 +221,7 @@ export default function PartidaDetalhePage() {
         setHomeScore={setHomeScore}
         setAwayScore={setAwayScore}
         onDeclareWO={handleDeclareWO}
-        readOnly={!isOwner}
+        readOnly={!canEdit}
       />
 
       <MatchEventsSection
@@ -232,10 +232,10 @@ export default function PartidaDetalhePage() {
         events={events}
         onAddEvent={(newEvent) => setEvents([...events, newEvent])}
         onRemoveEvent={(id) => setEvents(events.filter((e) => e.id !== id))}
-        readOnly={!isOwner}
+        readOnly={!canEdit}
       />
 
-      {isOwner && (
+      {canEdit && (
         <EditMatchModal
           isOpen={Boolean(matchToEdit)}
           onClose={() => setMatchToEdit(null)}

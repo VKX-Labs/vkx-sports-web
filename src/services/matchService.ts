@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { MatchEvent } from "@/types/event";
 import type { EventType } from "@/types";
 import { advanceWinnerIfPhaseFinished } from "@/services/bracketEngine";
-import { assertMatchOwner } from "@/services/ownership";
+import { assertMatchEditor } from "@/services/ownership";
 
 export interface SimplePlayer {
   id: string;
@@ -97,7 +97,7 @@ export const MatchService = {
     events = [],
     isTwoLegs = false,
   }: SaveMatchResultParams) {
-    await assertMatchOwner(matchId);
+    await assertMatchEditor(matchId);
 
     const updateMatchData: Record<string, any> = {
       home_score: homeScore ?? 0,

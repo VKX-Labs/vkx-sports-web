@@ -4,3 +4,8 @@ export type { Player } from "./player";
 export type { Match, MatchStatus } from "./match";
 export type { Profile, AuthContextType } from "./auth";
 export type { MatchEvent, EventType } from "./event";
+export type {
+  ChampionshipMember,
+  ChampionshipMemberRole,
+  ChampionshipMemberProfile,
+} from "./championship-member";

@@ -19,7 +19,7 @@ async function resolveChampionshipOwnerId(championshipId: string): Promise<strin
   return data.user_id as string | null;
 }
 
-async function resolveSeasonOwnerId(seasonId: string): Promise<string | null> {
+async function resolveSeasonChampionshipId(seasonId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("seasons")
     .select("championship_id")
@@ -27,7 +27,28 @@ async function resolveSeasonOwnerId(seasonId: string): Promise<string | null> {
     .maybeSingle();
 
   if (error || !data?.championship_id) return null;
-  return resolveChampionshipOwnerId(data.championship_id as string);
+  return data.championship_id as string | null;
+}
+
+async function resolveSeasonOwnerId(seasonId: string): Promise<string | null> {
+  const championshipId = await resolveSeasonChampionshipId(seasonId);
+  if (!championshipId) return null;
+  return resolveChampionshipOwnerId(championshipId);
+}
+
+async function hasEditorRole(
+  championshipId: string,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("championship_members")
+    .select("id")
+    .eq("championship_id", championshipId)
+    .eq("user_id", userId)
+    .in("role", ["EDITOR", "ADMIN"])
+    .maybeSingle();
+
+  return !error && Boolean(data);
 }
 
 /**
@@ -141,4 +162,105 @@ export async function assertRoundOwner(roundId: string): Promise<void> {
   if (ownerId !== userId) {
     throw new OwnershipError();
   }
+}
+
+// =============================================================
+// VARIAÇÕES "EDITOR": permitem mutações para donos e membros
+// com papel EDITOR/ADMIN no campeonato vinculado.
+// =============================================================
+
+export async function assertChampionshipEditor(
+  championshipId: string
+): Promise<void> {
+  const userId = await getAuthenticatedUserId();
+  const ownerId = await resolveChampionshipOwnerId(championshipId);
+
+  if (!ownerId) {
+    throw new Error("Campeonato não encontrado.");
+  }
+
+  if (ownerId === userId) return;
+
+  const isEditor = await hasEditorRole(championshipId, userId);
+  if (!isEditor) {
+    throw new OwnershipError();
+  }
+}
+
+export async function assertSeasonEditor(seasonId: string): Promise<void> {
+  const userId = await getAuthenticatedUserId();
+  const championshipId = await resolveSeasonChampionshipId(seasonId);
+
+  if (!championshipId) {
+    throw new Error("Temporada não encontrada.");
+  }
+
+  const ownerId = await resolveChampionshipOwnerId(championshipId);
+
+  if (!ownerId) {
+    throw new Error("Temporada não encontrada.");
+  }
+
+  if (ownerId === userId) return;
+
+  const isEditor = await hasEditorRole(championshipId, userId);
+  if (!isEditor) {
+    throw new OwnershipError();
+  }
+}
+
+export async function assertTeamEditor(teamId: string): Promise<void> {
+  const { data: team, error } = await supabase
+    .from("teams")
+    .select("season_id")
+    .eq("id", teamId)
+    .maybeSingle();
+
+  if (error || !team?.season_id) {
+    throw new Error("Equipe não encontrada.");
+  }
+
+  await assertSeasonEditor(team.season_id as string);
+}
+
+export async function assertPlayerEditor(playerId: string): Promise<void> {
+  const { data: player, error } = await supabase
+    .from("players")
+    .select("season_id")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (error || !player?.season_id) {
+    throw new Error("Jogador não encontrado.");
+  }
+
+  await assertSeasonEditor(player.season_id as string);
+}
+
+export async function assertMatchEditor(matchId: string): Promise<void> {
+  const { data: match, error } = await supabase
+    .from("matches")
+    .select("season_id")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  if (error || !match?.season_id) {
+    throw new Error("Partida não encontrada.");
+  }
+
+  await assertSeasonEditor(match.season_id as string);
+}
+
+export async function assertRoundEditor(roundId: string): Promise<void> {
+  const { data: round, error } = await supabase
+    .from("rounds")
+    .select("season_id")
+    .eq("id", roundId)
+    .maybeSingle();
+
+  if (error || !round?.season_id) {
+    throw new Error("Rodada não encontrada.");
+  }
+
+  await assertSeasonEditor(round.season_id as string);
 }

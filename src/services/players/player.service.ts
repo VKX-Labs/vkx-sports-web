@@ -38,7 +38,19 @@ export class PlayerService {
     }
 
     if (championship.user_id !== userId) {
-      throw new Error("Você não tem permissão para adicionar jogadores neste campeonato.");
+      const { data: member } = await supabase
+        .from("championship_members")
+        .select("id")
+        .eq("championship_id", championshipId)
+        .eq("user_id", userId)
+        .in("role", ["EDITOR", "ADMIN"])
+        .maybeSingle();
+
+      if (!member) {
+        throw new Error(
+          "Você não tem permissão para adicionar jogadores neste campeonato."
+        );
+      }
     }
 
     return PlayerRepository.createPlayer(championshipId, input);

@@ -6,8 +6,8 @@ import {
   UpdatePlayerInput,
 } from "@/types/player";
 import {
-  assertChampionshipOwner,
-  assertPlayerOwner,
+  assertChampionshipEditor,
+  assertPlayerEditor,
 } from "@/services/ownership";
 
 export class PlayerRepository {
@@ -73,7 +73,7 @@ export class PlayerRepository {
     championshipId: string,
     player: CreatePlayerInput
   ): Promise<Player> {
-    await assertChampionshipOwner(championshipId);
+    await assertChampionshipEditor(championshipId);
 
     const { data: seasonData, error: seasonError } = await supabase
       .from("seasons")
@@ -110,7 +110,7 @@ export class PlayerRepository {
     playerId: string,
     player: Partial<UpdatePlayerInput>
   ): Promise<Player> {
-    await assertPlayerOwner(playerId);
+    await assertPlayerEditor(playerId);
 
     const updateData: Record<string, unknown> = {};
 
@@ -133,7 +133,7 @@ export class PlayerRepository {
   }
 
   static async deletePlayer(playerId: string): Promise<void> {
-    await assertPlayerOwner(playerId);
+    await assertPlayerEditor(playerId);
 
     const { error } = await supabase
       .from("players")

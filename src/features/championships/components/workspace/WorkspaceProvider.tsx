@@ -5,12 +5,22 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import type { Championship } from "@/types/championship";
+import type {
+  ChampionshipMember,
+  ChampionshipMemberRole,
+} from "@/types/championship-member";
 import { useAuth } from "@/providers/auth-provider";
+import { useChampionshipMembers } from "@/hooks/useChampionshipMembers";
 
 interface WorkspaceContextValue {
   championship: Championship;
   user: User | null;
   isOwner: boolean;
+  canEdit: boolean;
+  myRole: ChampionshipMemberRole | null;
+  members: ChampionshipMember[];
+  loadingMembers: boolean;
+  refreshMembers: () => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -25,11 +35,27 @@ export function WorkspaceProvider({
   children,
 }: WorkspaceProviderProps) {
   const { user } = useAuth();
+  const { members, loading: loadingMembers, refresh: refreshMembers } =
+    useChampionshipMembers(championship.id);
 
   const isOwner = Boolean(user?.id && championship.user_id === user.id);
+  const myRole =
+    members.find((member) => member.user_id === user?.id)?.role ?? null;
+  const canEdit = isOwner || myRole === "EDITOR" || myRole === "ADMIN";
 
   return (
-    <WorkspaceContext.Provider value={{ championship, user, isOwner }}>
+    <WorkspaceContext.Provider
+      value={{
+        championship,
+        user,
+        isOwner,
+        canEdit,
+        myRole,
+        members,
+        loadingMembers,
+        refreshMembers,
+      }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );

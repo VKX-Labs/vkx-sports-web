@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTournamentGenerator } from "./useTournamentGenerator";
 import { advanceWinnerIfPhaseFinished } from "@/services/bracketEngine";
-import { assertMatchOwner } from "@/services/ownership";
+import { assertMatchEditor } from "@/services/ownership";
 
 export interface RoundTeam {
   id: string;
@@ -251,7 +251,7 @@ export function useRodadasLocal(championshipId: string) {
     penaltiesAway?: number | null
   ) => {
     try {
-      await assertMatchOwner(match.id);
+      await assertMatchEditor(match.id);
 
       const updateData: Record<string, any> = {
         home_score: homeScore,

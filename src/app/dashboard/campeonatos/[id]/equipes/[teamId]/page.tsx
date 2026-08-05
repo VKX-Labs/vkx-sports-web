@@ -25,7 +25,7 @@ export default function EquipeDetalhesPage() {
     teamId: string;
   }>();
 
-  const { isOwner } = useWorkspace();
+  const { canEdit } = useWorkspace();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [squad, setSquad] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +138,7 @@ export default function EquipeDetalhesPage() {
           </div>
         </div>
 
-        {isOwner && (
+        {canEdit && (
           <button
             onClick={openModal}
             className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg transition hover:bg-emerald-600 shrink-0"
@@ -179,7 +179,7 @@ export default function EquipeDetalhesPage() {
                   </h3>
                 </div>
 
-                {isOwner && (
+                {canEdit && (
                   <button
                     onClick={() => handleRemoveFromTeam(player.id)}
                     title="Remover atleta"
@@ -206,7 +206,7 @@ export default function EquipeDetalhesPage() {
         )}
       </div>
 
-      {isOwner && (
+      {canEdit && (
         <AddSquadPlayerModal
           championshipId={championshipId}
           teamId={teamId}
