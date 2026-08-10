@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useRodadasLocal } from "./useRodadasLocal";
 import { useRounds } from "@/hooks/useRounds";
 import { useTeams } from "@/hooks/useTeams";
 import { MatchRepository } from "@/repositories/match.repository";
 import { supabase } from "@/lib/supabase";
+import { RoundFilterService } from "@/services/roundFilterService";
+import { getPhaseRoundName, MatchLeg, TournamentType } from "@/types/tournament";
+import type { CreateMatchPayload } from "../components/CreateMatchModal";
+import type { EditMatchPayload } from "../components/EditMatchModal";
 
 export function useRodadasPageController() {
   const params = useParams();
@@ -26,6 +30,8 @@ export function useRodadasPageController() {
     removeRoundLocal,
     updateMatchLocal,
     deleteMatchLocal,
+    handleGenerate,
+    generator,
   } = useRodadasLocal(championshipId);
 
   const { teams = [] } = useTeams(championshipId);
@@ -34,12 +40,74 @@ export function useRodadasPageController() {
   const [isCreatingRound, setIsCreatingRound] = useState(false);
   const [isDeletingRound, setIsDeletingRound] = useState(false);
 
+  const [seasonInfo, setSeasonInfo] = useState<{
+    id: string;
+    tournamentType: TournamentType;
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      if (!championshipId) return;
+      const { data } = await supabase
+        .from("seasons")
+        .select("id, tournament_type")
+        .eq("championship_id", championshipId)
+        .maybeSingle();
+
+      if (data?.id) {
+        setSeasonInfo({
+          id: data.id,
+          tournamentType: (data.tournament_type as TournamentType) || "PONTOS_CORRIDOS",
+        });
+      }
+    })();
+  }, [championshipId]);
+
   const loading = loadingLocal || loadingGlobal;
+
+  const isKnockoutTournament =
+    seasonInfo?.tournamentType === "COPA" ||
+    seasonInfo?.tournamentType === "MATA_MATA";
+
+  const phaseOptions = useMemo(() => {
+    if (!seasonInfo || !isKnockoutTournament) return [];
+    return RoundFilterService.getFilterOptions(
+      seasonInfo.tournamentType,
+      Math.max(teams.length, 2)
+    );
+  }, [seasonInfo, isKnockoutTournament, teams.length]);
+
+  const bracketSizes = useMemo(() => {
+    if (!isKnockoutTournament) return {};
+    return RoundFilterService.getKnockoutBracketSizes(Math.max(teams.length, 2));
+  }, [isKnockoutTournament, teams.length]);
 
   const reloadData = async () => {
     if (refetchLocalRounds) {
       await refetchLocalRounds();
     }
+  };
+
+  const resolveRoundId = async (
+    phase: string,
+    leg?: MatchLeg | null
+  ): Promise<string> => {
+    if (!seasonInfo) {
+      throw new Error("Temporada não encontrada para este campeonato.");
+    }
+
+    const roundName = getPhaseRoundName(phase, leg ?? "UNICO");
+    const existing = rounds.find((r) => r.name === roundName);
+    if (existing) return existing.id;
+
+    const created = await MatchRepository.createRound(
+      seasonInfo.id,
+      roundName,
+      rounds.length + 1
+    );
+
+    if (created?.id) return created.id;
+    throw new Error(`Não foi possível localizar a rodada da fase "${roundName}".`);
   };
 
   const handleAddRound = async () => {
@@ -101,27 +169,28 @@ export function useRodadasPageController() {
     await reloadData();
   };
 
-  const handleCreateMatch = async (
-    homeTeamId: string,
-    awayTeamId: string
-  ) => {
+  const handleCreateMatch = async (payload: CreateMatchPayload) => {
     if (!currentRound) return;
 
-    const { data: seasonData, error: seasonError } = await supabase
-      .from("seasons")
-      .select("id")
-      .eq("championship_id", championshipId)
-      .maybeSingle();
-
-    if (seasonError || !seasonData?.id) {
+    if (!seasonInfo) {
       throw new Error("Temporada não encontrada para este campeonato.");
     }
 
+    let roundId = currentRound.id;
+
+    if (isKnockoutTournament && payload.phase) {
+      roundId = await resolveRoundId(payload.phase, payload.leg ?? "UNICO");
+    }
+
     await MatchRepository.createManualMatch({
-      seasonId: seasonData.id,
-      roundId: currentRound.id,
-      homeTeamId,
-      awayTeamId,
+      seasonId: seasonInfo.id,
+      roundId,
+      homeTeamId: payload.homeTeamId,
+      awayTeamId: payload.awayTeamId,
+      ...(payload.phase ? { phase: payload.phase } : {}),
+      ...(payload.bracketPosition !== undefined && payload.bracketPosition !== null
+        ? { bracketPosition: payload.bracketPosition }
+        : {}),
     });
 
     await reloadData();
@@ -150,31 +219,32 @@ export function useRodadasPageController() {
     }
   };
 
-  const handleUpdateMatch = async ({
-    matchId,
-    homeTeamId,
-    awayTeamId,
-    date,
-  }: {
-    matchId: string;
-    homeTeamId: string;
-    awayTeamId: string;
-    date?: string | null;
-  }) => {
+  const handleUpdateMatch = async (payload: EditMatchPayload) => {
     try {
+      let roundId: string | undefined;
+
+      if (isKnockoutTournament && payload.phase) {
+        roundId = await resolveRoundId(payload.phase, payload.leg ?? "UNICO");
+      }
+
       await MatchRepository.updateMatch({
-        matchId,
-        homeTeamId,
-        awayTeamId,
-        date,
+        matchId: payload.matchId,
+        homeTeamId: payload.homeTeamId,
+        awayTeamId: payload.awayTeamId,
+        date: payload.date,
+        ...(payload.phase !== undefined ? { phase: payload.phase } : {}),
+        ...(payload.bracketPosition !== undefined
+          ? { bracketPosition: payload.bracketPosition }
+          : {}),
+        ...(roundId !== undefined ? { roundId } : {}),
       });
 
-      const homeTeamObj = teams.find((t) => t.id === homeTeamId);
-      const awayTeamObj = teams.find((t) => t.id === awayTeamId);
+      const homeTeamObj = teams.find((t) => t.id === payload.homeTeamId);
+      const awayTeamObj = teams.find((t) => t.id === payload.awayTeamId);
 
       if (typeof updateMatchLocal === "function") {
         updateMatchLocal(
-          { id: matchId, home_team_id: homeTeamId, away_team_id: awayTeamId },
+          { id: payload.matchId, home_team_id: payload.homeTeamId, away_team_id: payload.awayTeamId },
           homeTeamObj,
           awayTeamObj
         );
@@ -201,6 +271,12 @@ export function useRodadasPageController() {
     isCreatingRound,
     isDeletingRound,
     isKnockoutPhase,
+    isKnockoutTournament,
+    tournamentType: seasonInfo?.tournamentType ?? null,
+    phaseOptions,
+    bracketSizes,
+    generator,
+    handleGenerate,
     setSelectedRoundIndex,
     setIsModalOpen,
     handleAddRound,

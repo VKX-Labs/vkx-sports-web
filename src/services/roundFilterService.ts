@@ -1,4 +1,10 @@
-import { TournamentType, RoundFilterOption } from "@/types/tournament";
+import {
+  TournamentType,
+  RoundFilterOption,
+  PHASE_NAMES,
+  getPhaseRoundName,
+} from "@/types/tournament";
+import { getBracketStructure } from "@/utils/generators/bracket";
 
 export class RoundFilterService {
   static getFilterOptions(
@@ -8,25 +14,15 @@ export class RoundFilterService {
   ): RoundFilterOption[] {
     switch (type) {
       case "MATA_MATA":
-        return [
-          { label: "Oitavas de Final", value: "OITAVAS", category: "KNOCKOUT" },
-          { label: "Quartas de Final", value: "QUARTAS", category: "KNOCKOUT" },
-          { label: "Semifinal", value: "SEMI", category: "KNOCKOUT" },
-          { label: "Disputa de 3º Lugar", value: "TERCEIRO_LUGAR", category: "KNOCKOUT" },
-          { label: "Final", value: "FINAL", category: "KNOCKOUT" },
-        ];
-
       case "COPA":
+        return this.getKnockoutPhaseOptions(totalTeams, hasTwoLegs);
+
       case "GRUPOS_MATA_MATA":
         return [
           { label: "Grupo - 1ª Rodada", value: "GROUP_R1", category: "GROUP" },
           { label: "Grupo - 2ª Rodada", value: "GROUP_R2", category: "GROUP" },
           { label: "Grupo - 3ª Rodada", value: "GROUP_R3", category: "GROUP" },
-          { label: "Playoffs / Pré-Libertadores", value: "PRE_PLAYOFF", category: "KNOCKOUT" },
-          { label: "Oitavas de Final", value: "OITAVAS", category: "KNOCKOUT" },
-          { label: "Quartas de Final", value: "QUARTAS", category: "KNOCKOUT" },
-          { label: "Semifinal", value: "SEMI", category: "KNOCKOUT" },
-          { label: "Final", value: "FINAL", category: "KNOCKOUT" },
+          ...this.getKnockoutPhaseOptions(totalTeams, hasTwoLegs),
         ];
 
       case "ELIMINATORIA_DUPLA":
@@ -47,5 +43,53 @@ export class RoundFilterService {
           category: "GROUP" as const,
         }));
     }
+  }
+
+  static getKnockoutBracketSizes(totalTeams: number): Record<string, number> {
+    return Object.fromEntries(
+      getBracketStructure(totalTeams).map((round) => [
+        round.phase,
+        round.matchCount,
+      ])
+    );
+  }
+
+  private static getKnockoutPhaseOptions(
+    totalTeams: number,
+    hasTwoLegs: boolean
+  ): RoundFilterOption[] {
+    const base = this.getKnockoutPhases(totalTeams);
+
+    if (!hasTwoLegs) {
+      return base.map((phase) => ({
+        label: PHASE_NAMES[phase] || phase,
+        value: phase,
+        category: "KNOCKOUT",
+      }));
+    }
+
+    return base.flatMap((phase) => [
+      {
+        label: getPhaseRoundName(phase, "IDA"),
+        value: phase,
+        category: "SPLIT" as const,
+        leg: "IDA" as const,
+      },
+      {
+        label: getPhaseRoundName(phase, "VOLTA"),
+        value: phase,
+        category: "SPLIT" as const,
+        leg: "VOLTA" as const,
+      },
+    ]);
+  }
+
+  private static getKnockoutPhases(totalTeams: number): string[] {
+    const phases: string[] = [];
+    for (const round of getBracketStructure(totalTeams)) {
+      phases.push(round.phase);
+    }
+    phases.push("THIRD_PLACE", "FINAL");
+    return Array.from(new Set(phases));
   }
 }

@@ -153,11 +153,18 @@ export function useClassificacao(championshipId: string) {
 
       setPlayoffMatches(playoffList);
 
+      const normalizedType = String(seasonData.tournament_type || "")
+        .toUpperCase()
+        .replace(/-/g, "_");
+
+      const isKnockoutOnly =
+        normalizedType === "COPA" || normalizedType === "MATA_MATA";
+
       if (
-        seasonData.tournament_type === "MATA_MATA" || 
+        isKnockoutOnly ||
         (playoffList.length > 0 && standings.every((s) => s.played === 0))
       ) {
-        setTournamentType("MATA_MATA");
+        setTournamentType(isKnockoutOnly ? (normalizedType as TournamentType) : "MATA_MATA");
         setActiveTab("bracket");
       } else {
         setActiveTab("table");

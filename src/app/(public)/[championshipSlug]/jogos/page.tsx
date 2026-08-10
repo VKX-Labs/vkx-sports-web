@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
+import { getPhaseDisplayName } from "@/types/tournament";
 import { usePublicChampionshipContext } from "@/app/(public)/[championshipSlug]/championship-context";
 import { PublicMatchCard } from "@/app/(public)/[championshipSlug]/components/PublicMatchCard";
 import { fetchPublicRounds, type PublicRound } from "@/app/(public)/[championshipSlug]/lib/public-data";
@@ -70,7 +71,7 @@ export default function PublicChampionshipMatchesPage() {
           {rounds.map((round) => (
             <section key={round.id} className="space-y-2">
               <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                {round.name || `${round.round_number}ª Rodada`}
+                {round.name ? getPhaseDisplayName(round.name) : `${round.round_number}ª Rodada`}
               </h2>
               {round.matches.length > 0 ? (
                 <div className="space-y-2">

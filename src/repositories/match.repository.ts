@@ -10,6 +10,7 @@ import {
   TournamentGeneratorRepository,
   GenerateTournamentOptions,
 } from "./tournament-generator.repository";
+import { forceAdvanceWinner as bracketEngineForceAdvanceWinner } from "@/services/bracketEngine";
 
 export type { GenerateTournamentOptions };
 
@@ -43,6 +44,14 @@ export const MatchRepository = {
       seasonId,
       options
     );
+  },
+
+  async forceAdvanceWinner(
+    matchId: string,
+    winnerTeamId: string
+  ): Promise<boolean> {
+    await assertMatchEditor(matchId);
+    return bracketEngineForceAdvanceWinner(matchId, winnerTeamId);
   },
 
   async generateRoundRobinTournament(
@@ -135,11 +144,15 @@ export const MatchRepository = {
     roundId,
     homeTeamId,
     awayTeamId,
+    phase,
+    bracketPosition,
   }: {
     seasonId: string;
     roundId: string;
     homeTeamId: string;
     awayTeamId: string;
+    phase?: string | null;
+    bracketPosition?: number | null;
   }) {
     await assertSeasonEditor(seasonId);
 
@@ -156,6 +169,10 @@ export const MatchRepository = {
           home_team_id: homeTeamId,
           away_team_id: awayTeamId,
           status: "AGENDADO",
+          ...(phase ? { phase } : {}),
+          ...(bracketPosition !== undefined && bracketPosition !== null
+            ? { bracket_position: bracketPosition }
+            : {}),
         },
       ])
       .select()
@@ -170,11 +187,17 @@ export const MatchRepository = {
     homeTeamId,
     awayTeamId,
     date,
+    phase,
+    bracketPosition,
+    roundId,
   }: {
     matchId: string;
     homeTeamId: string;
     awayTeamId: string;
     date?: string | null;
+    phase?: string | null;
+    bracketPosition?: number | null;
+    roundId?: string | null;
   }) {
     await assertMatchEditor(matchId);
 
@@ -188,6 +211,11 @@ export const MatchRepository = {
         home_team_id: homeTeamId,
         away_team_id: awayTeamId,
         ...(date !== undefined ? { date } : {}),
+        ...(phase !== undefined ? { phase } : {}),
+        ...(bracketPosition !== undefined && bracketPosition !== null
+          ? { bracket_position: bracketPosition }
+          : {}),
+        ...(roundId !== undefined ? { round_id: roundId } : {}),
       })
       .eq("id", matchId)
       .select()

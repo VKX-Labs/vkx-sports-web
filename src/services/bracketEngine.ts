@@ -28,6 +28,122 @@ export interface MatchAdvancePayload {
   status: string;
 }
 
+interface AdvanceTarget {
+  targetMatchId: string | null;
+  isHomeSlot: boolean;
+}
+
+async function resolveAdvanceTarget(
+  match: Pick<
+    MatchAdvancePayload,
+    "season_id" | "phase" | "bracket_position" | "next_match_id"
+  >
+): Promise<AdvanceTarget> {
+  const currentPos = match.bracket_position ?? 1;
+  const isHomeSlot = currentPos % 2 !== 0;
+
+  let targetMatchId: string | null = match.next_match_id || null;
+
+  if (!targetMatchId) {
+    const normalizedPhase = (match.phase || "").trim().toUpperCase();
+    const nextPhase = NEXT_PHASE_MAP[normalizedPhase];
+
+    if (!nextPhase) {
+      return { targetMatchId: null, isHomeSlot };
+    }
+
+    const nextBracketPos = Math.floor(currentPos / 2);
+
+    let { data: targetMatch, error: findError } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("season_id", match.season_id)
+      .ilike("phase", `%${nextPhase}%`)
+      .eq("bracket_position", nextBracketPos)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("Erro ao buscar próxima partida por posição:", findError);
+    }
+
+    if (!targetMatch && nextPhase === "FINAL") {
+      const { data: finalMatch } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("season_id", match.season_id)
+        .ilike("phase", "%FINAL%")
+        .maybeSingle();
+
+      targetMatch = finalMatch;
+    }
+
+    if (targetMatch) {
+      targetMatchId = targetMatch.id;
+    }
+  }
+
+  return { targetMatchId, isHomeSlot };
+}
+
+export async function forceAdvanceWinner(
+  matchId: string,
+  winnerTeamId: string
+): Promise<boolean> {
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .select(
+      "id, season_id, phase, bracket_position, next_match_id, home_team_id, away_team_id, winner_id"
+    )
+    .eq("id", matchId)
+    .single();
+
+  if (matchError || !match) {
+    throw new Error(matchError?.message || "Partida não encontrada.");
+  }
+
+  if (!match.home_team_id || !match.away_team_id) {
+    throw new Error(
+      "A partida precisa ter os dois times definidos para classificar um vencedor."
+    );
+  }
+
+  if (winnerTeamId !== match.home_team_id && winnerTeamId !== match.away_team_id) {
+    throw new Error("O vencedor deve ser um dos times participantes desta partida.");
+  }
+
+  const { error: winnerErr } = await supabase
+    .from("matches")
+    .update({ winner_id: winnerTeamId })
+    .eq("id", matchId);
+
+  if (winnerErr) {
+    throw new Error(`Erro ao gravar o vencedor: ${winnerErr.message}`);
+  }
+
+  const { targetMatchId, isHomeSlot } = await resolveAdvanceTarget({
+    season_id: match.season_id,
+    phase: match.phase ?? "",
+    bracket_position: match.bracket_position ?? 1,
+    next_match_id: match.next_match_id ?? null,
+  });
+
+  if (targetMatchId) {
+    const updatePayload = isHomeSlot
+      ? { home_team_id: winnerTeamId }
+      : { away_team_id: winnerTeamId };
+
+    const { error: advanceErr } = await supabase
+      .from("matches")
+      .update(updatePayload)
+      .eq("id", targetMatchId);
+
+    if (advanceErr) {
+      console.error("Erro ao propagar vencedor para a próxima fase:", advanceErr);
+    }
+  }
+
+  return true;
+}
 
 export async function advanceWinnerIfPhaseFinished(
   match: MatchAdvancePayload,
@@ -75,49 +191,7 @@ export async function advanceWinnerIfPhaseFinished(
       console.error("Erro ao gravar winner_id na partida atual:", winnerErr);
     }
 
-    const currentPos = match.bracket_position ?? 1;
-    const isHomeSlot = currentPos % 2 !== 0;
-
-    let targetMatchId: string | null = match.next_match_id || null;
-
-    if (!targetMatchId) {
-      const normalizedPhase = (match.phase || "").trim().toUpperCase();
-      const nextPhase = NEXT_PHASE_MAP[normalizedPhase];
-
-      if (!nextPhase) {
-        console.log(`Fase final (${normalizedPhase}) atingida ou próxima fase não configurada.`);
-        return;
-      }
-
-      const nextBracketPos = Math.ceil(currentPos / 2);
-
-      let { data: targetMatch, error: findError } = await supabase
-        .from("matches")
-        .select("id")
-        .eq("season_id", match.season_id)
-        .ilike("phase", `%${nextPhase}%`)
-        .eq("bracket_position", nextBracketPos)
-        .maybeSingle();
-
-      if (findError) {
-        console.error("Erro ao buscar próxima partida por posição:", findError);
-      }
-
-      if (!targetMatch && nextPhase === "FINAL") {
-        const { data: finalMatch } = await supabase
-          .from("matches")
-          .select("id")
-          .eq("season_id", match.season_id)
-          .ilike("phase", "%FINAL%")
-          .maybeSingle();
-
-        targetMatch = finalMatch;
-      }
-
-      if (targetMatch) {
-        targetMatchId = targetMatch.id;
-      }
-    }
+    const { targetMatchId, isHomeSlot } = await resolveAdvanceTarget(match);
 
     if (!targetMatchId) {
       console.warn("Partida de destino não encontrada para propagar o vencedor.");

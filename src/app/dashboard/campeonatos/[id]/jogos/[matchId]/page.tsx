@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { MatchService, MatchEventItem, SimplePlayer } from "@/services/matchService";
 import { MatchScoreCard } from "@/components/match/MatchScoreCard";
 import { MatchEventsSection } from "@/components/match/MatchEventsSection";
+import { ManualAdvanceCard } from "@/components/match/ManualAdvanceCard";
 import { MatchRepository } from "@/repositories/match.repository";
 import { useTeams } from "@/hooks/useTeams";
 import { routes } from "@/lib/routes";
@@ -67,6 +68,25 @@ export default function PartidaDetalhePage() {
     }
     loadData();
   }, [matchId]);
+
+  const refreshMatchData = async () => {
+    if (!matchId) return;
+    try {
+      const data = await MatchService.getMatchDetails(matchId);
+      setMatchData(data.match);
+      setHomeScore(data.match.home_score ?? 0);
+      setAwayScore(data.match.away_score ?? 0);
+      setHomeScoreLeg2(data.match.home_score_leg2 ?? null);
+      setAwayScoreLeg2(data.match.away_score_leg2 ?? null);
+      setPenaltiesHome(data.match.penalties_home ?? null);
+      setPenaltiesAway(data.match.penalties_away ?? null);
+      setPlayersHome(data.homePlayers);
+      setPlayersAway(data.awayPlayers);
+      setEvents(data.events);
+    } catch (err) {
+      console.error("Erro ao atualizar dados da partida:", err);
+    }
+  };
 
   const handleDeclareWO = (winner: "home" | "away" | "double_wo") => {
     if (winner === "home") {
@@ -223,6 +243,14 @@ export default function PartidaDetalhePage() {
         onDeclareWO={handleDeclareWO}
         readOnly={!canEdit}
       />
+
+      {canEdit &&
+        matchData?.phase &&
+        matchData.phase !== "REGULAR" &&
+        matchData.home_team_id &&
+        matchData.away_team_id && (
+          <ManualAdvanceCard match={matchData} onAdvance={refreshMatchData} />
+        )}
 
       <MatchEventsSection
         homeTeam={matchData?.home_team}

@@ -12,17 +12,52 @@ export type PlayoffPhase =
   | "QUARTAS"
   | "SEMI"
   | "FINAL"
-  | "TERCEIRO_LUGAR";
+  | "TERCEIRO_LUGAR"
+  | "THIRD_PLACE";
+
+export type MatchLeg = "IDA" | "VOLTA" | "UNICO";
 
 export const PHASE_NAMES: Record<string, string> = {
   PRE_PLAYOFF: "Pré-Playoffs",
-  "16_AVOS": "16 Avos de Final",
+  "16_AVOS": "16avos de Final",
   OITAVAS: "Oitavas de Final",
   QUARTAS: "Quartas de Final",
-  SEMI: "Semifinal",
-  TERCEIRO_LUGAR: "3º Lugar",
-  FINAL: "Final",
+  SEMI: "Semifinais",
+  SEMIFINAL: "Semifinais",
+  SEMIFINAIS: "Semifinais",
+  TERCEIRO_LUGAR: "Disputa de 3º Lugar",
+  THIRD_PLACE: "Disputa de 3º Lugar",
+  FINAL: "Grande Final",
 };
+
+export function getPhaseDisplayName(value?: string | null): string {
+  if (!value) return "";
+  const key = value.trim().toUpperCase();
+  return PHASE_NAMES[key] || value;
+}
+
+export function getPhaseRoundName(
+  phase: string,
+  leg?: MatchLeg | null
+): string {
+  const base = getPhaseDisplayName(phase);
+  if (leg === "IDA") return `${base} - Ida`;
+  if (leg === "VOLTA") return `${base} - Volta`;
+  return base;
+}
+
+export function getLegLabel(leg?: MatchLeg | null): string {
+  if (leg === "IDA") return "Jogo de Ida";
+  if (leg === "VOLTA") return "Jogo de Volta";
+  return "Jogo Único";
+}
+
+export function inferLegFromRoundName(name?: string | null): MatchLeg {
+  if (!name) return "UNICO";
+  if (name.includes(" - Ida") || name.includes("- Ida")) return "IDA";
+  if (name.includes(" - Volta") || name.includes("- Volta")) return "VOLTA";
+  return "UNICO";
+}
 
 export const PHASE_ORDER: PlayoffPhase[] = [
   "PRE_PLAYOFF",
@@ -31,6 +66,7 @@ export const PHASE_ORDER: PlayoffPhase[] = [
   "QUARTAS",
   "SEMI",
   "TERCEIRO_LUGAR",
+  "THIRD_PLACE",
   "FINAL",
 ];
 
@@ -137,6 +173,7 @@ export interface RoundFilterOption {
   label: string;
   value: string;
   category?: "GROUP" | "KNOCKOUT" | "SPLIT";
+  leg?: MatchLeg;
 }
 
 export interface MatchFilterConfig {

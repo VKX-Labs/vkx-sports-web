@@ -324,6 +324,7 @@ export function useRodadasLocal(championshipId: string) {
     isLoading: finalLoading,
     isGenerating: generator?.generating || false,
     handleGenerate,
+    generator,
     updateMatchScore,
     currentRound: rounds[selectedRoundIndex],
     refetchLocalRounds: fetchRoundsAndMatches,

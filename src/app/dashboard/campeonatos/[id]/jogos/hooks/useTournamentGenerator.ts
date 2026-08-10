@@ -81,15 +81,36 @@ export function useTournamentGenerator(championshipId: string) {
     init();
   }, [championshipId, init]);
 
+  const refreshTeamCount = async (): Promise<number> => {
+    if (!seasonId) return 0;
+
+    const { count, error } = await supabase
+      .from("teams")
+      .select("id", { count: "exact", head: true })
+      .eq("season_id", seasonId);
+
+    if (error) {
+      console.error("Erro ao contar equipes da temporada:", error);
+      return 0;
+    }
+
+    return count ?? 0;
+  };
+
   const generate = async () => {
     if (!seasonId) {
       alert("Nenhuma temporada ativa encontrada para este campeonato.");
-      return;
+      return false;
     }
 
-    if (teamCount < 2) {
-      alert("Você precisa cadastrar pelo menos 2 equipes para gerar a tabela de jogos!");
-      return;
+    const currentTeamCount = await refreshTeamCount();
+    setTeamCount(currentTeamCount);
+
+    if (currentTeamCount < 2) {
+      alert(
+        `Você precisa cadastrar pelo menos 2 equipes para gerar a tabela de jogos! Atualmente há ${currentTeamCount} equipe(s) cadastrada(s).`
+      );
+      return false;
     }
 
     try {
@@ -99,7 +120,7 @@ export function useTournamentGenerator(championshipId: string) {
         .toUpperCase()
         .replace(/-/g, "_");
 
-      const isKnockout = normalizedType === "MATA_MATA";
+      const isKnockout = normalizedType === "MATA_MATA" || normalizedType === "COPA";
 
       const genOptions: GenerateTournamentOptions = {
         shuffle: options.shuffle,
@@ -111,8 +132,27 @@ export function useTournamentGenerator(championshipId: string) {
       await MatchRepository.generateTournament(championshipId, seasonId, genOptions);
       setHasRounds(true);
       alert("Tabela de jogos gerada com sucesso!");
+      return true;
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Erro ao gerar o campeonato.");
+      const err = error as {
+        message?: string;
+        details?: string;
+        hint?: string;
+        code?: string;
+      };
+      console.error("Erro ao gerar o campeonato:", {
+        message: err?.message || error,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        championshipId,
+        seasonId,
+      });
+      alert(
+        err?.message ||
+          "Não foi possível gerar a tabela de jogos. Verifique se as equipes estão cadastradas e tente novamente."
+      );
+      return false;
     } finally {
       setGenerating(false);
     }

@@ -3,6 +3,7 @@ import type { MatchEvent } from "@/types/event";
 import type { EventType } from "@/types";
 import { advanceWinnerIfPhaseFinished } from "@/services/bracketEngine";
 import { assertMatchEditor } from "@/services/ownership";
+import { MatchRepository } from "@/repositories/match.repository";
 
 export interface SimplePlayer {
   id: string;
@@ -31,6 +32,10 @@ export interface SaveMatchResultParams {
 }
 
 export const MatchService = {
+  async forceAdvanceWinner(matchId: string, winnerTeamId: string) {
+    return MatchRepository.forceAdvanceWinner(matchId, winnerTeamId);
+  },
+
   async getMatchDetails(matchId: string) {
     const { data: match, error: matchError } = await supabase
       .from("matches")

@@ -6,6 +6,11 @@ export interface KnockoutBracketMatch {
   next_match_index: number;
 }
 
+export interface BracketRound {
+  phase: string;
+  matchCount: number;
+}
+
 function nextPowerOf2(n: number): number {
   let p = 1;
   while (p < n) p *= 2;
@@ -22,20 +27,12 @@ function getStandardPhases(bracketSize: number): string[] {
   return phases;
 }
 
-export function generateKnockoutBracket(
-  teams: { id: string }[]
-): KnockoutBracketMatch[] {
-  if (teams.length < 2) {
-    throw new Error("É necessário pelo menos 2 times para gerar o chaveamento.");
-  }
-
-  const numTeams = teams.length;
-  const bracketSize = nextPowerOf2(numTeams);
+export function getBracketStructure(numTeams: number): BracketRound[] {
+  const bracketSize = nextPowerOf2(Math.max(numTeams, 2));
   const needsPrePlayoff = numTeams !== bracketSize;
   const firstRoundSize = needsPrePlayoff ? bracketSize / 2 : bracketSize;
 
-  const rounds: { phase: string; matchCount: number }[] = [];
-
+  const rounds: BracketRound[] = [];
   if (needsPrePlayoff) {
     rounds.push({ phase: "PRE_PLAYOFF", matchCount: numTeams - firstRoundSize });
   }
@@ -45,6 +42,34 @@ export function generateKnockoutBracket(
     rounds.push({ phase, matchCount });
     matchCount /= 2;
   }
+
+  return rounds;
+}
+
+function shuffleTeams<T extends { id: string }>(teams: T[]): T[] {
+  const shuffled = [...teams];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+export function generateKnockoutBracket(
+  teams: { id: string }[],
+  shuffle: boolean = false
+): KnockoutBracketMatch[] {
+  if (teams.length < 2) {
+    throw new Error("É necessário pelo menos 2 times para gerar o chaveamento.");
+  }
+
+  const orderedTeams = shuffle ? shuffleTeams(teams) : teams;
+  const numTeams = orderedTeams.length;
+  const bracketSize = nextPowerOf2(numTeams);
+  const needsPrePlayoff = numTeams !== bracketSize;
+  const firstRoundSize = needsPrePlayoff ? bracketSize / 2 : bracketSize;
+
+  const rounds = getBracketStructure(numTeams);
 
   const matches: KnockoutBracketMatch[] = [];
   const roundStarts: number[] = [];
@@ -82,11 +107,11 @@ export function generateKnockoutBracket(
     const totalSlots = nextMatchCount * 2;
 
     for (let i = 0; i < preCount; i++) {
-      matches[firstStart + i].home_team_id = teams[i * 2].id;
-      matches[firstStart + i].away_team_id = teams[i * 2 + 1].id;
+      matches[firstStart + i].home_team_id = orderedTeams[i * 2].id;
+      matches[firstStart + i].away_team_id = orderedTeams[i * 2 + 1].id;
     }
 
-    const byeTeams = teams.slice(teamsInPrePlayoff);
+    const byeTeams = orderedTeams.slice(teamsInPrePlayoff);
     const slots: ({ kind: "pre"; idx: number } | { kind: "bye"; teamId: string })[] = [];
 
     let pi = 0;
@@ -124,8 +149,8 @@ export function generateKnockoutBracket(
   } else {
     const firstMatchCount = rounds[0].matchCount;
     for (let i = 0; i < firstMatchCount; i++) {
-      matches[firstStart + i].home_team_id = teams[i * 2]?.id ?? null;
-      matches[firstStart + i].away_team_id = teams[i * 2 + 1]?.id ?? null;
+      matches[firstStart + i].home_team_id = orderedTeams[i * 2]?.id ?? null;
+      matches[firstStart + i].away_team_id = orderedTeams[i * 2 + 1]?.id ?? null;
     }
   }
 

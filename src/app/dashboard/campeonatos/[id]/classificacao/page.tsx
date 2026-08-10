@@ -38,7 +38,7 @@ export default function ClassificacaoPage() {
     const canonicalType = normalizeTournamentType(newType);
     setTournamentType(canonicalType);
 
-    if (canonicalType === "MATA_MATA") {
+    if (canonicalType === "MATA_MATA" || canonicalType === "COPA") {
       setActiveTab("bracket");
     } else {
       setActiveTab("table");
@@ -96,12 +96,12 @@ export default function ClassificacaoPage() {
     );
   }
 
-  const isOnlyKnockout = normalizedTournamentType === "MATA_MATA";
+  const isOnlyKnockout =
+    normalizedTournamentType === "MATA_MATA" ||
+    normalizedTournamentType === "COPA";
   const effectiveTab = isOnlyKnockout ? "bracket" : activeTab;
 
-  const isGroupFormat =
-    normalizedTournamentType === "GRUPOS_MATA_MATA" ||
-    normalizedTournamentType === "COPA";
+  const isGroupFormat = normalizedTournamentType === "GRUPOS_MATA_MATA";
 
   const groupedStandings = isGroupFormat
     ? StandingsService.groupByGroups?.(standings)

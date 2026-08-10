@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { generateRoundRobin, GenerationTeam } from "@/utils/generators/round-robin";
 import { generateKnockoutBracket } from "@/utils/generators/bracket";
 import { normalizeTournamentType } from "@/utils";
-import { TournamentType, KnockoutRules, isPhaseTwoLegged, PlayoffPhase } from "@/types/tournament";
+import { TournamentType, KnockoutRules, isPhaseTwoLegged, PlayoffPhase, getPhaseDisplayName, getPhaseRoundName, MatchLeg } from "@/types/tournament";
 import { assertSeasonEditor } from "@/services/ownership";
 
 export interface GenerateTournamentOptions {
@@ -23,7 +23,7 @@ export const TournamentGeneratorRepository = {
     const rawType = options.tournamentType || "PONTOS_CORRIDOS";
     const tournamentType = rawType === "ROUND_ROBIN" ? "PONTOS_CORRIDOS" : normalizeTournamentType(rawType);
 
-    if (tournamentType === "MATA_MATA") {
+    if (tournamentType === "MATA_MATA" || tournamentType === "COPA") {
       return this.generateKnockoutTournament(seasonId, options);
     }
 
@@ -36,51 +36,131 @@ export const TournamentGeneratorRepository = {
   ) {
     await assertSeasonEditor(seasonId);
 
-    const { error: seasonError } = await supabase
-      .from("seasons")
-      .update({ tournament_type: "MATA_MATA" })
-      .eq("id", seasonId);
+    try {
+      const rawType = options.tournamentType || "MATA_MATA";
+      const canonicalType = rawType === "ROUND_ROBIN" ? "MATA_MATA" : normalizeTournamentType(rawType);
+      const knockoutType: "MATA_MATA" | "COPA" =
+        canonicalType === "COPA" ? "COPA" : "MATA_MATA";
 
-    if (seasonError) {
-      console.warn(`Aviso ao atualizar tipo na temporada: ${seasonError.message}`);
-    }
+      const { error: seasonError } = await supabase
+        .from("seasons")
+        .update({ tournament_type: knockoutType })
+        .eq("id", seasonId);
 
-    const { data: teams, error: teamsError } = await supabase
-      .from("teams")
-      .select("id, name")
-      .eq("season_id", seasonId);
+      if (seasonError) {
+        console.warn(`Aviso ao atualizar tipo na temporada: ${seasonError.message}`);
+      }
 
-    if (teamsError) {
-      throw new Error(`Erro ao buscar equipes: ${teamsError.message}`);
-    }
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id, name")
+        .eq("season_id", seasonId);
 
-    if (!teams || teams.length < 2) {
-      throw new Error("É necessário cadastrar pelo menos 2 equipes para gerar o mata-mata.");
-    }
+      if (teamsError) {
+        console.error("Erro ao buscar equipes do mata-mata:", {
+          message: teamsError.message,
+          details: teamsError.details,
+          hint: teamsError.hint,
+          code: teamsError.code,
+        });
+        throw new Error(`Erro ao buscar equipes: ${teamsError.message}`);
+      }
 
-    await supabase.from("matches").delete().eq("season_id", seasonId);
-    await supabase.from("rounds").delete().eq("season_id", seasonId);
+      if (!teams || teams.length < 2) {
+        const message =
+          "É necessário cadastrar pelo menos 2 equipes para gerar o mata-mata.";
+        console.error(message, { teamCount: teams?.length ?? 0 });
+        throw new Error(message);
+      }
 
-    const knockoutRules = options.knockoutRules;
-    const generated = generateKnockoutBracket(teams);
+      const { error: deleteMatchesError } = await supabase
+        .from("matches")
+        .delete()
+        .eq("season_id", seasonId);
+
+      if (deleteMatchesError) {
+        console.error("Erro ao apagar partidas antigas antes de gerar o mata-mata:", {
+          message: deleteMatchesError.message,
+          details: deleteMatchesError.details,
+          hint: deleteMatchesError.hint,
+          code: deleteMatchesError.code,
+        });
+        throw new Error(`Erro ao apagar partidas antigas: ${deleteMatchesError.message}`);
+      }
+
+      const { error: deleteRoundsError } = await supabase
+        .from("rounds")
+        .delete()
+        .eq("season_id", seasonId);
+
+      if (deleteRoundsError) {
+        console.error("Erro ao apagar rodadas antigas antes de gerar o mata-mata:", {
+          message: deleteRoundsError.message,
+          details: deleteRoundsError.details,
+          hint: deleteRoundsError.hint,
+          code: deleteRoundsError.code,
+        });
+        throw new Error(`Erro ao apagar rodadas antigas: ${deleteRoundsError.message}`);
+      }
+
+      const knockoutRules = options.knockoutRules;
+      const generated = generateKnockoutBracket(teams, options.shuffle ?? false);
+
+    const isTwoLeggedPhase = (phase: string): boolean =>
+      knockoutRules
+        ? isPhaseTwoLegged(knockoutRules, phase as PlayoffPhase)
+        : Boolean(options.twoLegged);
 
     const uniquePhases = Array.from(new Set(generated.map((m) => m.phase)));
+    const roundPlan: { phase: string; name: string; leg: MatchLeg | null }[] = [];
+
+    for (const phaseName of uniquePhases) {
+      if (isTwoLeggedPhase(phaseName)) {
+        roundPlan.push({
+          phase: phaseName,
+          name: getPhaseRoundName(phaseName, "IDA"),
+          leg: "IDA",
+        });
+        roundPlan.push({
+          phase: phaseName,
+          name: getPhaseRoundName(phaseName, "VOLTA"),
+          leg: "VOLTA",
+        });
+      } else {
+        roundPlan.push({
+          phase: phaseName,
+          name: getPhaseDisplayName(phaseName),
+          leg: null,
+        });
+      }
+    }
+
     const createdRoundsMap = new Map<string, string>();
 
-    for (let index = 0; index < uniquePhases.length; index++) {
-      const phaseName = uniquePhases[index];
+    for (let index = 0; index < roundPlan.length; index++) {
+      const { phase, name, leg } = roundPlan[index];
       const { data: insertedRound, error: roundErr } = await supabase
         .from("rounds")
         .insert({
           season_id: seasonId,
-          name: phaseName,
+          name,
           round_number: index + 1,
         })
         .select("id, name")
         .single();
 
-      if (!roundErr && insertedRound) {
-        createdRoundsMap.set(insertedRound.name, insertedRound.id);
+      if (roundErr) {
+        console.error(`Erro ao criar a rodada "${name}" do mata-mata:`, {
+          message: roundErr.message,
+          details: roundErr.details,
+          hint: roundErr.hint,
+          code: roundErr.code,
+        });
+        throw new Error(`Erro ao criar a rodada "${name}": ${roundErr.message}`);
+      }
+
+      if (insertedRound) {
+        createdRoundsMap.set(`${phase}::${leg ?? "UNICO"}`, insertedRound.id);
       }
     }
 
@@ -88,9 +168,13 @@ export const TournamentGeneratorRepository = {
     const leg2Matches: Record<string, unknown>[] = [];
 
     for (const node of generated) {
+      const isTwoLegged = isTwoLeggedPhase(node.phase);
+      const leg1RoundKey = `${node.phase}::${isTwoLegged ? "IDA" : "UNICO"}`;
+      const leg2RoundKey = `${node.phase}::VOLTA`;
+
       const base = {
         season_id: seasonId,
-        round_id: createdRoundsMap.get(node.phase) || null,
+        round_id: createdRoundsMap.get(leg1RoundKey) || null,
         phase: node.phase,
         bracket_position: node.bracket_position,
         home_team_id: node.home_team_id,
@@ -99,14 +183,10 @@ export const TournamentGeneratorRepository = {
       };
       matchesToInsert.push(base);
 
-      const isTwoLegged = knockoutRules
-        ? isPhaseTwoLegged(knockoutRules, node.phase as PlayoffPhase)
-        : Boolean(options.twoLegged);
-
       if (isTwoLegged && node.home_team_id && node.away_team_id) {
         leg2Matches.push({
           season_id: seasonId,
-          round_id: createdRoundsMap.get(node.phase) || null,
+          round_id: createdRoundsMap.get(leg2RoundKey) || null,
           phase: node.phase,
           bracket_position: node.bracket_position,
           home_team_id: node.away_team_id,
@@ -124,6 +204,13 @@ export const TournamentGeneratorRepository = {
       .select("id, phase, bracket_position");
 
     if (insertResult.error) {
+      console.error("Erro ao salvar as partidas do mata-mata:", {
+        message: insertResult.error.message,
+        details: insertResult.error.details,
+        hint: insertResult.error.hint,
+        code: insertResult.error.code,
+        roundCount: roundPlan.length,
+      });
       throw new Error(`Erro ao salvar chaves do mata-mata: ${insertResult.error.message}`);
     }
 
@@ -148,10 +235,11 @@ export const TournamentGeneratorRepository = {
 
     for (let i = leg1Count; i < insertedMatches.length; i++) {
       const leg1Index = i - leg1Count;
-      if (leg1Index < leg1Count) {
+      const nextIdx = generated[leg1Index]?.next_match_index;
+      if (nextIdx != null && nextIdx >= 0 && tempIdToDbId.has(String(nextIdx))) {
         await supabase
           .from("matches")
-          .update({ next_match_id: tempIdToDbId.get(String(leg1Index)) })
+          .update({ next_match_id: tempIdToDbId.get(String(nextIdx)) })
           .eq("id", insertedMatches[i].id);
       }
     }
@@ -164,6 +252,22 @@ export const TournamentGeneratorRepository = {
     }
 
     return true;
+    } catch (error) {
+      const err = error as {
+        message?: string;
+        details?: string;
+        hint?: string;
+        code?: string;
+      };
+      console.error("Falha ao gerar o mata-mata:", {
+        message: err?.message || error,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        seasonId,
+      });
+      throw error;
+    }
   },
 
   async generateRoundRobinTournament(
