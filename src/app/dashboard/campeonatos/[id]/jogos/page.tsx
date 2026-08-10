@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRodadasPageController } from "./hooks/useRodadasPageController";
-import { Calendar, RefreshCw, Shield, Trophy, Plus, Trash2, Wand2 } from "lucide-react";
+import { Calendar, RefreshCw, Shield, Trophy, Plus, Trash2, Wand2, ImageIcon } from "lucide-react";
 import { getPhaseDisplayName, inferLegFromRoundName } from "@/types/tournament";
 import Button from "@/components/ui/button";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
@@ -10,10 +10,11 @@ import { MatchCard, MatchCardMatch } from "./components/MatchCard";
 import { CreateMatchModal } from "./components/CreateMatchModal";
 import { EditMatchModal, EditMatchTarget } from "./components/EditMatchModal";
 import { GeneratorOptionsModal } from "./components/GeneratorOptionsModal";
+import { RoundArtModal } from "@/components/match/RoundArtModal";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function RodadasPage() {
-  const { canEdit } = useWorkspace();
+  const { championship, canEdit } = useWorkspace();
 
   const {
     loading,
@@ -43,6 +44,7 @@ export default function RodadasPage() {
 
   const [matchToEdit, setMatchToEdit] = React.useState<EditMatchTarget | null>(null);
   const [isGeneratorModalOpen, setIsGeneratorModalOpen] = React.useState(false);
+  const [isArtModalOpen, setIsArtModalOpen] = useState(false);
 
   const handleEditMatch = (
     match: MatchCardMatch & {
@@ -60,6 +62,12 @@ export default function RodadasPage() {
       leg: inferLegFromRoundName(currentRound?.name),
     });
   };
+
+  const selectedRoundName = currentRound?.name
+    ? getPhaseDisplayName(currentRound.name)
+    : currentRound?.round_number
+    ? `${currentRound.round_number}ª Rodada`
+    : "Rodada";
 
   if (loading) {
     return (
@@ -141,8 +149,8 @@ export default function RodadasPage() {
               {isKnockoutTournament
                 ? "Fase Eliminatória"
                 : isKnockoutPhase
-                  ? "Fase Eliminatória (Mata-Mata)"
-                  : "Fase de Classificação / Grupos"}
+                ? "Fase Eliminatória (Mata-Mata)"
+                : "Fase de Classificação / Grupos"}
             </p>
           </div>
         </div>
@@ -159,6 +167,17 @@ export default function RodadasPage() {
               </option>
             ))}
           </select>
+
+          {/* Botão de Gerar Arte da Rodada */}
+          <button
+            onClick={() => setIsArtModalOpen(true)}
+            disabled={!currentRound?.matches || currentRound.matches.length === 0}
+            title="Gerar Arte da Rodada em PNG"
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer disabled:opacity-40"
+          >
+            <ImageIcon className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Arte da Rodada</span>
+          </button>
 
           {canEdit && (
             <button
@@ -290,6 +309,23 @@ export default function RodadasPage() {
           }}
         />
       )}
+
+      {/* Modal da Arte da Rodada */}
+      <RoundArtModal
+        isOpen={isArtModalOpen}
+        onClose={() => setIsArtModalOpen(false)}
+        championshipName={championship?.name || "Campeonato"}
+        roundName={selectedRoundName}
+        matches={(currentRound?.matches || []).map((m: any) => ({
+          homeTeamName: m.home_team?.name || m.home_team_name || "Mandante",
+          homeTeamBadge: m.home_team?.badge_url || m.home_team_badge,
+          awayTeamName: m.away_team?.name || m.away_team_name || "Visitante",
+          awayTeamBadge: m.away_team?.badge_url || m.away_team_badge,
+          homeScore: m.home_score,
+          awayScore: m.away_score,
+          status: m.status,
+        }))}
+      />
     </div>
   );
 }
