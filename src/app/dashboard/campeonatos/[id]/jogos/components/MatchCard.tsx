@@ -42,11 +42,64 @@ export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
   const homeName = home?.name || "TBD";
   const awayName = away?.name || "TBD";
 
+  const isFinished = match.status === "finished" || match.status === "FINALIZADO";
+  const isLive =
+    match.status === "EM_ANDAMENTO" ||
+    match.status === "in_progress" ||
+    match.status === "AO_VIVO";
+  const isPostponed = match.status === "ADIADO";
+  const isCancelled = match.status === "CANCELADO";
+
+  let statusLabel: string;
+  let badgeClass: string;
+
+  if (isLive) {
+    statusLabel = "Ao Vivo";
+    badgeClass = "bg-red-500/10 text-red-400 border border-red-500/30";
+  } else if (isFinished) {
+    statusLabel = "Encerrado";
+    badgeClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  } else if (isPostponed) {
+    statusLabel = "Adiado";
+    badgeClass = "bg-amber-500/10 text-amber-400 border border-amber-500/30";
+  } else if (isCancelled) {
+    statusLabel = "Cancelado";
+    badgeClass = "bg-red-500/10 text-red-400 border border-red-500/30";
+  } else {
+    statusLabel = "Agendado";
+    badgeClass = "bg-zinc-800 text-zinc-400";
+  }
+
   const renderBadge = (url: string | null | undefined) => {
     if (url) {
-      return <img src={url} alt="Escudo" className="w-full h-full object-contain" />;
+      return (
+        <img
+          src={url}
+          alt="Escudo"
+          className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+        />
+      );
     }
-    return <Shield className="w-4 h-4 md:w-5 md:h-5 text-slate-500 opacity-60" />;
+    return (
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+        <Shield className="w-5 h-5 text-zinc-500 opacity-60" />
+      </div>
+    );
+  };
+
+  const formatScheduledTime = (value?: string | null): string | null => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    const time = date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const day = date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+    return `${day} • ${time}`;
   };
 
   const handleCardClick = () => {
@@ -55,83 +108,77 @@ export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    const map: Record<string, string> = {
-      scheduled: "Agendado",
-      AGENDADO: "Agendado",
-      finished: "Finalizado",
-      FINALIZADO: "Finalizado",
-      in_progress: "Em Andamento"
-    };
-    return map[status] || status;
-  };
-
-  const isFinished = match.status === "finished" || match.status === "FINALIZADO";
-
   return (
     <div
       onClick={handleCardClick}
-      className="relative w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 flex items-center gap-2 md:gap-3 shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
+      className="relative w-full bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 shadow-md hover:border-emerald-500/50 hover:bg-zinc-800/80 transition-all cursor-pointer group"
     >
-      <div className="flex items-center justify-end gap-1.5 md:gap-3 min-w-0 flex-1">
-        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none group-hover:text-emerald-400 transition-colors">
-          {homeName}
-        </span>
-        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+      {/* Status da Partida */}
+      <span
+        className={`mx-auto w-fit px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}
+      >
+        {statusLabel}
+      </span>
+
+      {/* Corpo do Confronto */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mt-3">
+        {/* Coluna Mandante */}
+        <div className="flex flex-col items-center text-center">
           {renderBadge(home?.badge_url)}
-        </div>
-      </div>
-
-      <div className="w-20 md:w-28 shrink-0 flex flex-col items-center justify-center text-center">
-        <div className="flex items-center gap-1.5 md:gap-2 bg-slate-950 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg border border-slate-800 font-mono text-sm md:text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
-          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
-            {match.home_score !== null ? match.home_score : "-"}
-          </span>
-          <span className="text-slate-600 text-xs">:</span>
-          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
-            {match.away_score !== null ? match.away_score : "-"}
+          <span className="text-xs font-medium text-zinc-200 mt-1.5 line-clamp-2 max-w-[100px] group-hover:text-emerald-300 transition-colors">
+            {homeName}
           </span>
         </div>
-        <span className={`text-[10px] font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded border ${
-          isFinished 
-            ? "text-emerald-400 bg-emerald-950/40 border-emerald-900/50" 
-            : "text-slate-400 bg-slate-800/60 border-slate-700"
-        }`}>
-          {getStatusLabel(match.status)}
-        </span>
-      </div>
 
-      <div className="flex items-center justify-start gap-1.5 md:gap-3 min-w-0 flex-1">
-        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+        {/* Coluna Central (Placar / Versus) */}
+        <div className="flex items-center justify-center gap-2 px-2">
+          {isLive || isFinished ? (
+            <span className="text-2xl font-black text-white">
+              {match.home_score ?? 0}
+              <span className="text-zinc-500 mx-1 text-xl font-bold">x</span>
+              {match.away_score ?? 0}
+            </span>
+          ) : (
+            <span className="text-lg font-bold text-zinc-400">
+              {formatScheduledTime(match.date) ?? "- : -"}
+            </span>
+          )}
+        </div>
+
+        {/* Coluna Visitante */}
+        <div className="flex flex-col items-center text-center">
           {renderBadge(away?.badge_url)}
+          <span className="text-xs font-medium text-zinc-200 mt-1.5 line-clamp-2 max-w-[100px] group-hover:text-emerald-300 transition-colors">
+            {awayName}
+          </span>
         </div>
-        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none group-hover:text-emerald-400 transition-colors">
-          {awayName}
-        </span>
       </div>
 
+      {/* Botões de Ação (Admin) */}
       {(onEdit || onDelete) && (
-        <div className="flex items-center gap-1 shrink-0 ml-1 md:ml-2">
+        <div className="absolute top-3 right-3 flex items-center gap-1">
           {onEdit && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(match);
               }}
               title="Editar partida"
-              className="p-1.5 rounded-lg bg-slate-950/90 border border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+              className="p-1.5 rounded-lg bg-zinc-950/90 border border-zinc-700 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
             >
               <Pencil className="w-3.5 h-3.5" />
             </button>
           )}
           {onDelete && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(match.id);
               }}
               title="Excluir partida"
-              className="p-1.5 rounded-lg bg-slate-950/90 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+              className="p-1.5 rounded-lg bg-zinc-950/90 border border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 transition cursor-pointer opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
