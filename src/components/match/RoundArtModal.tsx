@@ -71,7 +71,7 @@ export function RoundArtModal({
         </div>
 
         {/* Card de Pré-visualização da Arte */}
-        <div className="my-6 flex justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-2">
+        <div className="my-6 overflow-x-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
           <div
             ref={artRef}
             className="relative flex flex-col justify-between w-[480px] min-h-[600px] p-8 text-white font-sans"
@@ -95,34 +95,36 @@ export function RoundArtModal({
             </div>
 
             {/* Grid de Confrontos */}
-            <div className="my-6 grid grid-cols-2 gap-4 z-10">
+            <div className="my-6 grid grid-cols-1 sm:grid-cols-2 gap-3 z-10">
               {matches.map((match, idx) => {
                 const isFinished = match.status === "finished" || match.status === "FINALIZADO";
                 return (
                   <div
                     key={idx}
-                    className="flex items-center justify-between bg-slate-900/80 border border-slate-800/80 rounded-lg p-3 backdrop-blur-sm"
+                    className="flex items-center justify-between gap-2 bg-slate-900/80 border border-slate-800/80 rounded-lg p-2.5 backdrop-blur-sm"
                   >
                     {/* Time Mandante */}
-                    <div className="flex flex-col items-center flex-1 text-center">
-                      {match.homeTeamBadge ? (
-                        <img
-                          src={match.homeTeamBadge}
-                          alt=""
-                          className="w-10 h-10 object-contain mb-1"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-slate-800 rounded-full mb-1 flex items-center justify-center font-bold text-xs">
-                          {match.homeTeamName?.substring(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-[10px] font-bold text-slate-300 uppercase line-clamp-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                        {match.homeTeamBadge ? (
+                          <img
+                            src={match.homeTeamBadge}
+                            alt=""
+                            className="w-8 h-8 object-contain"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center font-bold text-xs">
+                            {match.homeTeamName?.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-slate-300 uppercase truncate">
                         {match.homeTeamName}
                       </span>
                     </div>
 
                     {/* Placar ou X */}
-                    <div className="px-2 font-black text-amber-400 text-sm">
+                    <div className="shrink-0 px-1.5 font-black text-amber-400 text-sm text-center">
                       {isFinished ? (
                         <span className="text-white bg-slate-800 px-2 py-0.5 rounded text-xs">
                           {match.homeScore} - {match.awayScore}
@@ -133,21 +135,23 @@ export function RoundArtModal({
                     </div>
 
                     {/* Time Visitante */}
-                    <div className="flex flex-col items-center flex-1 text-center">
-                      {match.awayTeamBadge ? (
-                        <img
-                          src={match.awayTeamBadge}
-                          alt=""
-                          className="w-10 h-10 object-contain mb-1"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-slate-800 rounded-full mb-1 flex items-center justify-center font-bold text-xs">
-                          {match.awayTeamName?.substring(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-[10px] font-bold text-slate-300 uppercase line-clamp-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                      <span className="text-xs font-semibold text-slate-300 uppercase truncate">
                         {match.awayTeamName}
                       </span>
+                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                        {match.awayTeamBadge ? (
+                          <img
+                            src={match.awayTeamBadge}
+                            alt=""
+                            className="w-8 h-8 object-contain"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center font-bold text-xs">
+                            {match.awayTeamName?.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

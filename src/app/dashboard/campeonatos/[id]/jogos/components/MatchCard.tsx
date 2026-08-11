@@ -71,10 +71,47 @@ export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="relative w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 grid grid-cols-[1fr_auto_1fr] md:flex md:items-center md:justify-between shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
+      className="relative w-full bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 flex items-center gap-2 md:gap-3 shadow-md hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all cursor-pointer group"
     >
+      <div className="flex items-center justify-end gap-1.5 md:gap-3 min-w-0 flex-1">
+        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none group-hover:text-emerald-400 transition-colors">
+          {homeName}
+        </span>
+        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+          {renderBadge(home?.badge_url)}
+        </div>
+      </div>
+
+      <div className="w-20 md:w-28 shrink-0 flex flex-col items-center justify-center text-center">
+        <div className="flex items-center gap-1.5 md:gap-2 bg-slate-950 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg border border-slate-800 font-mono text-sm md:text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
+          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
+            {match.home_score !== null ? match.home_score : "-"}
+          </span>
+          <span className="text-slate-600 text-xs">:</span>
+          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
+            {match.away_score !== null ? match.away_score : "-"}
+          </span>
+        </div>
+        <span className={`text-[10px] font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded border ${
+          isFinished 
+            ? "text-emerald-400 bg-emerald-950/40 border-emerald-900/50" 
+            : "text-slate-400 bg-slate-800/60 border-slate-700"
+        }`}>
+          {getStatusLabel(match.status)}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-start gap-1.5 md:gap-3 min-w-0 flex-1">
+        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
+          {renderBadge(away?.badge_url)}
+        </div>
+        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none group-hover:text-emerald-400 transition-colors">
+          {awayName}
+        </span>
+      </div>
+
       {(onEdit || onDelete) && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0 ml-1 md:ml-2">
           {onEdit && (
             <button
               onClick={(e) => {
@@ -101,43 +138,6 @@ export function MatchCard({ match, onEdit, onDelete }: MatchCardProps) {
           )}
         </div>
       )}
-
-      <div className="flex items-center justify-end gap-2 md:gap-3 md:flex-1 md:text-right">
-        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[90px] md:max-w-[140px] group-hover:text-emerald-400 transition-colors">
-          {homeName}
-        </span>
-        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
-          {renderBadge(home?.badge_url)}
-        </div>
-      </div>
-
-      <div className="flex flex-col items-center justify-center px-2 md:px-4 min-w-[80px] md:min-w-[100px]">
-        <div className="flex items-center gap-1.5 md:gap-2 bg-slate-950 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg border border-slate-800 font-mono text-sm md:text-base font-bold text-slate-100 shadow-inner group-hover:border-slate-700">
-          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
-            {match.home_score !== null ? match.home_score : "-"}
-          </span>
-          <span className="text-slate-600 text-xs">:</span>
-          <span className={isFinished ? "text-emerald-400" : "text-slate-100"}>
-            {match.away_score !== null ? match.away_score : "-"}
-          </span>
-        </div>
-        <span className={`text-[10px] font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded border ${
-          isFinished 
-            ? "text-emerald-400 bg-emerald-950/40 border-emerald-900/50" 
-            : "text-slate-400 bg-slate-800/60 border-slate-700"
-        }`}>
-          {getStatusLabel(match.status)}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-start gap-2 md:gap-3 md:flex-1 md:text-left">
-        <div className="w-7 h-7 md:w-10 md:h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0 overflow-hidden">
-          {renderBadge(away?.badge_url)}
-        </div>
-        <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[90px] md:max-w-[140px] group-hover:text-emerald-400 transition-colors">
-          {awayName}
-        </span>
-      </div>
     </div>
   );
 }
