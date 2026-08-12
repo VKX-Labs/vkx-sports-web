@@ -94,6 +94,8 @@ export class PlayerRepository {
         season_id: seasonData.id,
         team_id: player.team_id ?? null,
         name: player.name.trim(),
+        position: player.position ?? null,
+        number: player.number ?? null,
         photo_url: player.photo_url ?? null,
       })
       .select()
@@ -116,6 +118,8 @@ export class PlayerRepository {
 
     if (player.name !== undefined) updateData.name = player.name;
     if (player.team_id !== undefined) updateData.team_id = player.team_id;
+    if (player.position !== undefined) updateData.position = player.position;
+    if (player.number !== undefined) updateData.number = player.number;
     if (player.photo_url !== undefined) updateData.photo_url = player.photo_url;
 
     const { data, error } = await supabase

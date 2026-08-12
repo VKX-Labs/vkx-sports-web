@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { X, Upload, Loader2, User, Trophy, Shield, Star } from "lucide-react";
 import { PlayerService } from "@/services/players/player.service";
+import { PLAYER_POSITIONS, POSITION_LABELS } from "@/types/player";
 import type { Player, UpdatePlayerInput, PlayerStats } from "@/types/player";
 import type { Team } from "@/types/team";
 
@@ -25,6 +26,8 @@ export default function EditPlayerModal({
   const [loadingStats, setLoadingStats] = useState(false);
   const [name, setName] = useState("");
   const [teamId, setTeamId] = useState<string>("");
+  const [position, setPosition] = useState<string>("");
+  const [shirtNumber, setShirtNumber] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -65,6 +68,8 @@ export default function EditPlayerModal({
     if (player && isOpen) {
       setName(player.name || "");
       setTeamId(player.team_id || "");
+      setPosition(player.position || "");
+      setShirtNumber(player.number != null ? String(player.number) : "");
       setImagePreview(player.photo_url || null);
       setImageFile(null);
 
@@ -111,6 +116,8 @@ export default function EditPlayerModal({
       const updateData: UpdatePlayerInput = {
         name: name.trim(),
         team_id: teamId !== "" ? teamId : null,
+        position: PLAYER_POSITIONS.includes(position as (typeof PLAYER_POSITIONS)[number]) ? (position as (typeof PLAYER_POSITIONS)[number]) : null,
+        number: shirtNumber !== "" ? Number(shirtNumber) : null,
         photo_url: photoUrl,
       };
 
@@ -247,6 +254,41 @@ export default function EditPlayerModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">
+              Posição
+            </label>
+            <select
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              disabled={loading}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 md:py-2.5 py-3 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent transition"
+            >
+              <option value="">Selecione a posição</option>
+              {PLAYER_POSITIONS.map((p) => (
+                <option key={p} value={p}>
+                  {POSITION_LABELS[p]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">
+              Número da Camisa (Opcional)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={shirtNumber}
+              onChange={(e) => setShirtNumber(e.target.value)}
+              disabled={loading}
+              placeholder="Ex: 10"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 md:py-2.5 py-3 text-xs text-brand-textPrimary placeholder-slate-600 focus:outline-none focus:border-brand-accent transition"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-800/60">

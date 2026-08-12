@@ -144,6 +144,15 @@ export class PlayerService {
       const uniqueMatchesFromEvents = new Set(eventList.map((e) => e.match_id)).size;
       const finalMatchCount = Math.max(totalMatches, uniqueMatchesFromEvents);
 
+      const { data: playerRow } = await supabase
+        .from("players")
+        .select("average_rating")
+        .eq("id", playerId)
+        .maybeSingle();
+
+      const averageRating =
+        playerRow?.average_rating != null ? Number(playerRow.average_rating) : 0;
+
       let goals = 0;
       let assists = 0;
       let yellowCards = 0;
@@ -174,7 +183,7 @@ export class PlayerService {
         yellow_cards: yellowCards,
         red_cards: redCards,
         saves,
-        rating: 0.0,
+        rating: averageRating,
       };
     } catch (err) {
       console.error("Erro em getPlayerStats:", err);

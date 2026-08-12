@@ -8,6 +8,7 @@ import EditPlayerModal from "@/components/forms/EditPlayerModal";
 import { PlayerService } from "@/services/players/player.service";
 import { supabase } from "@/lib/supabase";
 import type { Player } from "@/types/player";
+import { POSITION_LABELS } from "@/types/player";
 import type { Team } from "@/types/team";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
@@ -150,6 +151,19 @@ export default function JogadoresPage() {
                 <span className="inline-block mt-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full truncate border border-emerald-500/20">
                   {player.team_name || "Sem equipe"}
                 </span>
+
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  {player.position && (
+                    <span className="inline-block text-[10px] font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full truncate">
+                      {POSITION_LABELS[player.position] ?? player.position}
+                    </span>
+                  )}
+                  {player.number != null && (
+                    <span className="inline-block text-[10px] font-bold text-brand-textSecondary bg-slate-800/70 px-2 py-0.5 rounded-full">
+                      #{player.number}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

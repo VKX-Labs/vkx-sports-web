@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, RefreshCw, Copy, Check, Trophy } from "lucide-react";
+import { Sparkles, RefreshCw, Copy, Check, Trophy, Users } from "lucide-react";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 import { supabase } from "@/lib/supabase";
 import { RoundSummaryMarkdown } from "@/components/match/RoundSummaryMarkdown";
+import TeamOfWeekField, { type TeamOfWeek } from "@/components/match/TeamOfWeekField";
 
 const SUMMARY_TTL_MS = 48 * 60 * 60 * 1000;
 
@@ -24,7 +25,16 @@ interface SummaryTeam {
 
 interface SummaryEvent {
   type: string;
+  player_id: string | null;
   player_name: string;
+  team_name: string;
+}
+
+interface SummarySquadPlayer {
+  player_id: string;
+  name: string;
+  position: string | null;
+  photo_url: string | null;
   team_name: string;
 }
 
@@ -36,6 +46,7 @@ interface SummaryMatch {
   home_team: SummaryTeam;
   away_team: SummaryTeam;
   events: SummaryEvent[];
+  squads: SummarySquadPlayer[];
 }
 
 interface SummaryRound {
@@ -52,11 +63,17 @@ export default function ChampionshipHome() {
   const [selectedRoundIndex, setSelectedRoundIndex] = useState<number>(0);
   const [loadingRounds, setLoadingRounds] = useState<boolean>(true);
 
+  const [seasonId, setSeasonId] = useState<string>("");
+
   const [summary, setSummary] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [expired, setExpired] = useState<boolean>(false);
+
+  const [teamOfWeek, setTeamOfWeek] = useState<TeamOfWeek | null>(null);
+  const [ratingsLoading, setRatingsLoading] = useState<boolean>(false);
+  const [ratingsError, setRatingsError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRoundsData() {
@@ -73,8 +90,11 @@ export default function ChampionshipHome() {
         if (seasonError) throw seasonError;
         if (!season) {
           setRounds([]);
+          setSeasonId("");
           return;
         }
+
+        setSeasonId(season.id);
 
         const { data: roundsData, error: roundsError } = await supabase
           .from("rounds")
@@ -113,14 +133,12 @@ export default function ChampionshipHome() {
 
         if (teamsError) throw teamsError;
 
-        const playerIds = Array.from(
-          new Set((eventsData || []).map((e) => e.player_id).filter(Boolean))
-        );
+        const { data: playersData, error: playersError } = await supabase
+          .from("players")
+          .select("id, name, team_id, position, photo_url")
+          .eq("season_id", season.id);
 
-        const { data: playersData } =
-          playerIds.length > 0
-            ? await supabase.from("players").select("id, name").in("id", playerIds)
-            : { data: [] };
+        if (playersError) throw playersError;
 
         const teamsMap = new Map<string, SummaryTeam>(
           (teamsData || []).map((t) => [
@@ -138,10 +156,25 @@ export default function ChampionshipHome() {
           const list = eventsByMatch.get(event.match_id) || [];
           list.push({
             type: event.type,
+            player_id: event.player_id,
             player_name: playersMap.get(event.player_id) || "Jogador",
             team_name: teamsMap.get(event.team_id)?.name || "Time",
           });
           eventsByMatch.set(event.match_id, list);
+        });
+
+        const playersByTeam = new Map<string, SummarySquadPlayer[]>();
+        (playersData || []).forEach((player) => {
+          if (!player.team_id) return;
+          const squad = playersByTeam.get(player.team_id) || [];
+          squad.push({
+            player_id: player.id,
+            name: player.name,
+            position: player.position,
+            photo_url: player.photo_url,
+            team_name: teamsMap.get(player.team_id)?.name || "Time",
+          });
+          playersByTeam.set(player.team_id, squad);
         });
 
         const defaultTeam: SummaryTeam = {
@@ -163,6 +196,10 @@ export default function ChampionshipHome() {
               home_team: teamsMap.get(match.home_team_id) || defaultTeam,
               away_team: teamsMap.get(match.away_team_id) || defaultTeam,
               events: eventsByMatch.get(match.id) || [],
+              squads: [
+                ...(playersByTeam.get(match.home_team_id) || []),
+                ...(playersByTeam.get(match.away_team_id) || []),
+              ],
             })),
         }));
 
@@ -271,6 +308,45 @@ export default function ChampionshipHome() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleGenerateRatings = async () => {
+    if (!currentRound || currentRound.matches.length === 0) {
+      setRatingsError("Nenhuma partida encontrada nesta rodada para avaliar.");
+      return;
+    }
+
+    try {
+      setRatingsLoading(true);
+      setRatingsError(null);
+
+      const res = await fetch("/api/round-player-ratings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          championshipId: championship?.id,
+          championshipName: championship?.name || "Campeonato",
+          seasonId,
+          roundNumber: currentRound.round_number,
+          roundName: currentRoundName,
+          matches: currentRound.matches,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao avaliar rodada com IA.");
+
+      setTeamOfWeek(data.team_of_the_week || null);
+    } catch (err: any) {
+      setRatingsError(err.message || "Erro ao conectar com a IA.");
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setTeamOfWeek(null);
+    setRatingsError(null);
+  }, [selectedRoundIndex]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800">
@@ -311,6 +387,20 @@ export default function ChampionshipHome() {
               <Sparkles className="w-4 h-4 text-purple-200" />
             )}
             <span>{loading ? "Analisando..." : "Gerar Resumo com IA"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerateRatings}
+            disabled={ratingsLoading || loadingRounds}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50 shrink-0 w-full md:w-auto"
+          >
+            {ratingsLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Users className="w-4 h-4" />
+            )}
+            <span>{ratingsLoading ? "Avaliando..." : "Gerar 11 Ideal"}</span>
           </button>
         </div>
       </div>
@@ -375,6 +465,19 @@ export default function ChampionshipHome() {
           </div>
         )}
       </div>
+
+      {ratingsError && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+          {ratingsError}
+        </div>
+      )}
+
+      {teamOfWeek && (
+        <TeamOfWeekField
+          teamOfWeek={teamOfWeek}
+          roundName={currentRoundName}
+        />
+      )}
     </div>
   );
 }

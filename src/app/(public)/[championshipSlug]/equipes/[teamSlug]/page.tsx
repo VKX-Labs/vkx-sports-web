@@ -21,7 +21,7 @@ interface PublicPlayer {
   id: string;
   name: string;
   photo_url: string | null;
-  shirt_number: number | null;
+  number: number | null;
   position: string | null;
 }
 
@@ -57,7 +57,7 @@ export default function PublicChampionshipTeamPage() {
 
         const { data: squadData, error: squadError } = await supabase
           .from("players")
-          .select("id, name, photo_url, shirt_number, position")
+          .select("id, name, photo_url, number, position")
           .eq("team_id", teamId)
           .order("name");
 
@@ -176,7 +176,7 @@ export default function PublicChampionshipTeamPage() {
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     {player.position || "Sem posição"}
-                    {player.shirt_number ? ` • ${player.shirt_number}` : ""}
+                    {player.number ? ` • ${player.number}` : ""}
                   </p>
                 </div>
               </div>

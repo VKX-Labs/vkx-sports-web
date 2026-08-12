@@ -8,6 +8,7 @@ import * as z from "zod";
 import { playerSchema } from "@/validators/player.schema";
 import { PlayerService } from "@/services/players/player.service";
 import { getTeams } from "@/services/teams/team-service";
+import { PLAYER_POSITIONS, POSITION_LABELS } from "@/types/player";
 import type { Team } from "@/types/team";
 
 type PlayerFormValues = z.input<typeof playerSchema>;
@@ -31,6 +32,8 @@ export default function PlayerForm({ championshipId, isOpen, onClose, onSuccess 
     defaultValues: {
       name: "",
       team_id: undefined,
+      position: null,
+      number: null,
     }
   });
 
@@ -69,6 +72,8 @@ export default function PlayerForm({ championshipId, isOpen, onClose, onSuccess 
       await PlayerService.registerPlayer(championshipId, {
         name: data.name,
         team_id: data.team_id || null,
+        position: data.position || null,
+        number: data.number ?? null,
         photo_url: photoUrl,
       });
 
@@ -144,6 +149,41 @@ export default function PlayerForm({ championshipId, isOpen, onClose, onSuccess 
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">Posição</label>
+            <select
+              disabled={loading}
+              {...register("position", {
+                setValueAs: (v) => (v === "" ? null : v),
+              })}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary focus:outline-none focus:border-brand-accent appearance-none"
+            >
+              <option value="">Selecione a posição</option>
+              {PLAYER_POSITIONS.map((position) => (
+                <option key={position} value={position}>
+                  {POSITION_LABELS[position]}
+                </option>
+              ))}
+            </select>
+            {errors.position && <p className="text-[10px] text-red-500 mt-1">{errors.position.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">Número da Camisa (Opcional)</label>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              placeholder="Ex: 10"
+              disabled={loading}
+              {...register("number", {
+                setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+              })}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-brand-textPrimary placeholder-slate-600 focus:outline-none focus:border-brand-accent"
+            />
+            {errors.number && <p className="text-[10px] text-red-500 mt-1">{errors.number.message}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-800/60">
