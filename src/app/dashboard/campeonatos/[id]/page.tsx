@@ -6,6 +6,17 @@ import { useWorkspace } from "@/features/championships/components/workspace/Work
 import { supabase } from "@/lib/supabase";
 import { RoundSummaryMarkdown } from "@/components/match/RoundSummaryMarkdown";
 
+const SUMMARY_TTL_MS = 48 * 60 * 60 * 1000;
+
+function isMissingTableError(err: any): boolean {
+  const message = `${err?.message || ""} ${err?.error_description || ""}`.toLowerCase();
+  return (
+    message.includes("could not find the table") ||
+    message.includes("does not exist") ||
+    message.includes("relation") || message.includes("not found")
+  );
+}
+
 interface SummaryTeam {
   name: string;
   badge_url: string | null;
@@ -45,6 +56,7 @@ export default function ChampionshipHome() {
   const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [expired, setExpired] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadRoundsData() {
@@ -176,23 +188,42 @@ export default function ChampionshipHome() {
     async function fetchSavedSummary() {
       if (!championship?.id || !currentRound) {
         setSummary("");
+        setExpired(false);
         return;
       }
 
       try {
         const { data, error } = await supabase
           .from("round_summaries")
-          .select("content")
+          .select("content, updated_at")
           .eq("championship_id", championship.id)
           .eq("round_number", currentRound.round_number)
           .maybeSingle();
 
         if (error) throw error;
 
-        setSummary(data?.content || "");
+        const isExpired = Boolean(
+          data &&
+            new Date(data.updated_at).getTime() < Date.now() - SUMMARY_TTL_MS
+        );
+
+        setSummary(isExpired ? "" : data?.content || "");
+        setExpired(isExpired);
         setError(null);
       } catch (err: any) {
-        console.error("Erro ao carregar o resumo salvo da rodada:", err);
+        if (isMissingTableError(err)) {
+          setSummary("");
+          setExpired(false);
+          setError(null);
+          return;
+        }
+
+        const errorMessage =
+          err?.message || err?.error_description || JSON.stringify(err);
+        console.error(
+          "Erro ao carregar o resumo salvo da rodada:",
+          errorMessage
+        );
       }
     }
 
@@ -208,6 +239,7 @@ export default function ChampionshipHome() {
     try {
       setLoading(true);
       setError(null);
+      setExpired(false);
 
       const res = await fetch("/api/generate-round-summary", {
         method: "POST",
@@ -241,7 +273,7 @@ export default function ChampionshipHome() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" />
@@ -252,12 +284,12 @@ export default function ChampionshipHome() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {rounds.length > 0 && (
             <select
               value={selectedRoundIndex}
               onChange={(e) => setSelectedRoundIndex(Number(e.target.value))}
-              className="bg-zinc-950 text-xs text-zinc-200 border border-zinc-800 rounded-xl px-3 py-2.5 font-bold cursor-pointer focus:outline-none focus:border-purple-500"
+              className="bg-zinc-950 text-xs text-zinc-200 border border-zinc-800 rounded-xl px-3 py-2.5 font-bold cursor-pointer focus:outline-none focus:border-purple-500 w-full md:w-auto"
             >
               {rounds.map((round, idx) => (
                 <option key={round.id || idx} value={idx}>
@@ -271,7 +303,7 @@ export default function ChampionshipHome() {
             type="button"
             onClick={handleGenerateSummary}
             disabled={loading || loadingRounds}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-lg shadow-purple-600/20 cursor-pointer disabled:opacity-50 shrink-0"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-lg shadow-purple-600/20 cursor-pointer disabled:opacity-50 shrink-0 w-full md:w-auto"
           >
             {loading ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -301,10 +333,16 @@ export default function ChampionshipHome() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 min-h-[320px]">
+      {expired && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+          O resumo desta rodada expirou (válido por 48 horas). Clique em "Gerar Resumo com IA" para gerar um novo boletim.
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 sm:p-6 min-h-[280px] sm:min-h-[320px]">
         {summary ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
               <span className="text-xs font-mono text-purple-400 font-semibold">
                 RODADA ANALISADA: {currentRoundName.toUpperCase()}
               </span>

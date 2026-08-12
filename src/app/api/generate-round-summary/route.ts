@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createServerClient } from "@supabase/ssr";
 
+function isMissingTableError(err: any): boolean {
+  const message = `${err?.message || ""} ${err?.error_description || ""}`.toLowerCase();
+  return (
+    message.includes("could not find the table") ||
+    message.includes("does not exist") ||
+    message.includes("relation") || message.includes("not found")
+  );
+}
+
+const DEFAULT_BADGE = "https://via.placeholder.com/40?text=FC";
+
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GROQ_API_KEY;
@@ -35,17 +46,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Mapeamento enriquecido com URLs de escudos e eventos completos
-    const matchesFormatted = matches
+    // Linhas EXATAS de confronto (escudos já resolvidos) que a IA deve
+    // reproduzir sem alterar nenhuma URL. Cada time tem seu próprio escudo.
+    const confrontosFormatted = matches
       .map((m: any, idx: number) => {
-        const homeTeam = m.home_team?.name || m.home_team_name || "Mandante";
-        const awayTeam = m.away_team?.name || m.away_team_name || "Visitante";
-        const homeBadge = m.home_team?.badge_url || m.home_badge_url || "";
-        const awayBadge = m.away_team?.badge_url || m.away_badge_url || "";
-
+        const homeTeam =
+          m.home_team?.name || m.home_team_name || `Mandante ${idx + 1}`;
+        const awayTeam =
+          m.away_team?.name || m.away_team_name || `Visitante ${idx + 1}`;
+        const homeLogo =
+          m.home_team?.badge_url || m.home_badge_url || DEFAULT_BADGE;
+        const awayLogo =
+          m.away_team?.badge_url || m.away_badge_url || DEFAULT_BADGE;
         const homeScore = m.home_score ?? 0;
         const awayScore = m.away_score ?? 0;
-        const score = `${homeScore} x ${awayScore}`;
+
+        return `- ![${homeTeam}](${homeLogo}) ${homeScore} x ${awayScore} ![${awayTeam}](${awayLogo})`;
+      })
+      .join("\n");
+
+    // Detalhes dos eventos por partida (apenas para a narrativa jornalística)
+    const detalhesFormatted = matches
+      .map((m: any, idx: number) => {
+        const homeTeam =
+          m.home_team?.name || m.home_team_name || `Mandante ${idx + 1}`;
+        const awayTeam =
+          m.away_team?.name || m.away_team_name || `Visitante ${idx + 1}`;
+        const homeLogo =
+          m.home_team?.badge_url || m.home_badge_url || DEFAULT_BADGE;
+        const awayLogo =
+          m.away_team?.badge_url || m.away_badge_url || DEFAULT_BADGE;
 
         const events = m.events || [];
 
@@ -74,13 +104,10 @@ export async function POST(req: NextRequest) {
           .map((e: any) => `${e.player_name || e.player?.name || "Goleiro"} (${e.team_name || e.team?.name || homeTeam})`)
           .join(", ");
 
-        const homeDisplay = homeBadge ? `![${homeTeam}](${homeBadge}) **${homeTeam}**` : `**${homeTeam}**`;
-        const awayDisplay = awayBadge ? `![${awayTeam}](${awayBadge}) **${awayTeam}**` : `**${awayTeam}**`;
-
         return `
-📌 Jogo ${idx + 1}: ${homeDisplay} ${score} ${awayDisplay}
-- Escudo Mandante: ${homeBadge || "Não informado"}
-- Escudo Visitante: ${awayBadge || "Não informado"}
+📌 Jogo ${idx + 1}: ${homeTeam} x ${awayTeam}
+- Escudo Mandante (URL): ${homeLogo}
+- Escudo Visitante (URL): ${awayLogo}
 - Gols marcados: ${goals || "Nenhum gol"}
 - Assistências: ${assists || "Nenhuma"}
 - Cartões Amarelos: ${yellowCards || "Nenhum"}
@@ -94,12 +121,19 @@ export async function POST(req: NextRequest) {
 Você é um jornalista esportivo cobrindo o campeonato "${championshipName}".
 Sua tarefa é escrever um boletim/notícia focado EXCLUSIVAMENTE nos acontecimentos da **${roundName}**.
 
+REGRA CRÍTICA PARA OS ESCUDOS: Na seção CONFRONTOS DA RODADA, você deve usar EXATAMENTE a linha formatada com as URLs das imagens fornecidas no input. Não repita o escudo do time mandante no time visitante. Cada time possui sua própria imagem correspondente.
+
 DADOS REAIS E OFICIAIS DAS PARTIDAS DA RODADA:
-${matchesFormatted}
+
+CONFRONTOS DA RODADA (use EXATAMENTE estas linhas, sem alterar nenhuma URL de escudo):
+${confrontosFormatted}
+
+DETALHES DOS EVENTOS (apenas para redigir a narrativa — NÃO use escudos no texto corrido):
+${detalhesFormatted}
 
 REGRAS OBRIGATÓRIAS DE RENDERIZAÇÃO:
 1. Escreva uma matéria empolgante em Markdown.
-2. NUNCA inclua escudos de times dentro de parágrafos de texto corrido. Para os confrontos, logo no início da seção "Resumo dos Confrontos", exiba cada jogo em UMA LINHA DEDICADA no formato exato: ![NomeTime](url_escudo) Placar ![NomeTime](url_escudo). Mantenha todas essas linhas de confronto agrupadas em um único bloco (sem parágrafos entre elas), logo após o título da seção e antes de qualquer texto narrativo.
+2. Na seção "Resumo dos Confrontos", copie LITERALMENTE o bloco CONFRONTOS DA RODADA acima, na mesma ordem e com as mesmas URLs de escudo, sem trocar ou repetir imagens entre os times. Mantenha as linhas agrupadas em um único bloco (sem parágrafos entre elas), logo após o título da seção e antes de qualquer texto narrativo.
 3. No texto jornalístico, mencione os times usando APENAS **negrito** (ex: **Time A**), sem repetir os escudos.
 4. Cada jogador pertence estritamente ao seu time indicado nos dados acima.
 5. Para a seção de goleiros/paredão, utilize OBRIGATORIAMENTE um bloco de citação Markdown (começando com >) para dar um grande destaque às defesas.
@@ -109,8 +143,7 @@ ESTRUTURA DA MATÉRIA:
 
 ### ⚡ Resumo dos Confrontos
 **CONFRONTOS DA RODADA:**
-![TimeMandante](url_escudo) Placar ![TimeVisitante](url_escudo)
-(uma linha dedicada por jogo, no formato acima, usando os escudos reais fornecidos nos dados)
+${confrontosFormatted}
 
 (Em seguida, escreva a narrativa jornalística descrevendo os jogos, placares e autores dos gols e assistências — mencionando os times apenas em negrito, sem escudos).
 
@@ -127,7 +160,7 @@ ESTRUTURA DA MATÉRIA:
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
-        { role: "system", content: "Você é um jornalista esportivo especialista em futebol e análises táticas." },
+        { role: "system", content: "Você é um jornalista esportivo especialista em futebol e análises táticas. REGRA CRÍTICA PARA OS ESCUDOS: Na seção CONFRONTOS DA RODADA, você deve usar EXATAMENTE a linha formatada com as URLs das imagens fornecidas no input. Não repita o escudo do time mandante no time visitante. Cada time possui sua própria imagem correspondente." },
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
@@ -194,9 +227,13 @@ async function persistSummary({
     );
 
     if (error) {
-      console.error("Erro ao salvar o resumo no Supabase:", error);
+      if (!isMissingTableError(error)) {
+        console.error("Erro ao salvar o resumo no Supabase:", error);
+      }
     }
   } catch (err) {
-    console.error("Erro ao persistir o resumo no Supabase:", err);
+    if (!isMissingTableError(err)) {
+      console.error("Erro ao persistir o resumo no Supabase:", err);
+    }
   }
 }

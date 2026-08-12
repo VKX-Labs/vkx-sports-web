@@ -5,6 +5,17 @@ import { Sparkles, Copy, Check, X, RefreshCw, AlertTriangle } from "lucide-react
 import { supabase } from "@/lib/supabase";
 import { RoundSummaryMarkdown } from "./RoundSummaryMarkdown";
 
+const SUMMARY_TTL_MS = 48 * 60 * 60 * 1000;
+
+function isMissingTableError(err: any): boolean {
+  const message = `${err?.message || ""} ${err?.error_description || ""}`.toLowerCase();
+  return (
+    message.includes("could not find the table") ||
+    message.includes("does not exist") ||
+    message.includes("relation") || message.includes("not found")
+  );
+}
+
 interface RoundAiSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,12 +39,14 @@ export function RoundAiSummaryModal({
   const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [expired, setExpired] = useState<boolean>(false);
 
   useEffect(() => {
     async function fetchSavedSummary() {
       if (!isOpen || !championshipId) {
         setSummary("");
         setError(null);
+        setExpired(false);
         setLoading(false);
         return;
       }
@@ -41,17 +54,35 @@ export function RoundAiSummaryModal({
       try {
         const { data, error } = await supabase
           .from("round_summaries")
-          .select("content")
+          .select("content, updated_at")
           .eq("championship_id", championshipId)
           .eq("round_number", roundNumber)
           .maybeSingle();
 
         if (error) throw error;
 
-        setSummary(data?.content || "");
+        const isExpired = Boolean(
+          data &&
+            new Date(data.updated_at).getTime() < Date.now() - SUMMARY_TTL_MS
+        );
+
+        setSummary(isExpired ? "" : data?.content || "");
+        setExpired(isExpired);
         setError(null);
       } catch (err: any) {
-        console.error("Erro ao carregar o resumo salvo da rodada:", err);
+        if (isMissingTableError(err)) {
+          setSummary("");
+          setExpired(false);
+          setError(null);
+          return;
+        }
+
+        const errorMessage =
+          err?.message || err?.error_description || JSON.stringify(err);
+        console.error(
+          "Erro ao carregar o resumo salvo da rodada:",
+          errorMessage
+        );
       }
     }
 
@@ -71,6 +102,7 @@ export function RoundAiSummaryModal({
     try {
       setLoading(true);
       setError(null);
+      setExpired(false);
 
       const res = await fetch("/api/generate-round-summary", {
         method: "POST",
@@ -171,6 +203,12 @@ export function RoundAiSummaryModal({
             </div>
           )}
 
+          {expired && !loading && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs text-center">
+              O resumo desta rodada expirou (válido por 48 horas). Clique em "Gerar Resumo Agora" para gerar um novo boletim.
+            </div>
+          )}
+
           {summary && !loading && (
             <div className="max-h-[380px] overflow-y-auto p-4 rounded-xl bg-zinc-950 border border-zinc-800/80">
               <RoundSummaryMarkdown content={summary} />
@@ -179,7 +217,7 @@ export function RoundAiSummaryModal({
         </div>
 
         {/* Rodapé */}
-        <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
           {summary ? (
             <button
               type="button"
