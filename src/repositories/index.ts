@@ -18,4 +18,5 @@ export {
   findTeamsByChampionshipId,
   insertTeam,
   updateTeamById,
+  deleteTeam,
 } from "./team.repository";

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Shield, Users, MapPin, Settings2 } from "lucide-react";
+import { Shield, Users, MapPin, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { Team } from "@/types/team";
 import { routes } from "@/lib/routes";
@@ -10,10 +10,11 @@ interface TeamCardProps {
   team: Team;
   championshipId: string;
   onEdit: (team: Team) => void;
+  onDelete?: (team: Team) => void;
   canEdit?: boolean;
 }
 
-export default function TeamCard({ team, championshipId, onEdit, canEdit = true }: TeamCardProps) {
+export default function TeamCard({ team, championshipId, onEdit, onDelete, canEdit = true }: TeamCardProps) {
   const playerLength = team._count?.players || 0;
 
   return (
@@ -67,9 +68,23 @@ export default function TeamCard({ team, championshipId, onEdit, canEdit = true 
           </button>
         )}
 
+        {canEdit && onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(team)}
+            title="Excluir equipe"
+            className="py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-xs transition border border-red-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Excluir
+          </button>
+        )}
+
         <Link
           href={routes.dashboard.team(championshipId, team.id)}
-          className="py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-bold text-xs transition text-center flex items-center justify-center gap-1.5 border border-emerald-500/20 hover:border-transparent"
+          className={`py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-bold text-xs transition text-center flex items-center justify-center gap-1.5 border border-emerald-500/20 hover:border-transparent ${
+            canEdit ? "" : "col-span-2"
+          }`}
         >
           <Settings2 className="w-3.5 h-3.5" />
           Gerenciar

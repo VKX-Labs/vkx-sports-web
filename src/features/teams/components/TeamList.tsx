@@ -8,6 +8,7 @@ import { useTeams } from "@/hooks/useTeams";
 import TeamCard from "@/features/teams/components/TeamCard";
 import TeamForm from "@/components/forms/TeamForm";
 import EditTeamModal from "@/components/forms/EditTeamModal";
+import DeleteTeamModal from "@/components/forms/DeleteTeamModal";
 import type { Team } from "@/types/team";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
@@ -19,6 +20,8 @@ export default function TeamList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const filteredTeams = teams.filter(
     (team) =>
@@ -29,6 +32,11 @@ export default function TeamList() {
   const handleOpenEdit = (team: Team) => {
     setEditingTeam(team);
     setIsEditModalOpen(true);
+  };
+
+  const handleOpenDelete = (team: Team) => {
+    setDeletingTeam(team);
+    setIsDeleteModalOpen(true);
   };
 
   return (
@@ -96,6 +104,7 @@ export default function TeamList() {
               team={team}
               championshipId={id as string}
               onEdit={handleOpenEdit}
+              onDelete={canEdit ? handleOpenDelete : undefined}
               canEdit={canEdit}
             />
           ))}
@@ -118,6 +127,18 @@ export default function TeamList() {
           onClose={() => {
             setIsEditModalOpen(false);
             setEditingTeam(null);
+          }}
+          onSuccess={refresh}
+        />
+      )}
+
+      {canEdit && (
+        <DeleteTeamModal
+          team={deletingTeam}
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setDeletingTeam(null);
           }}
           onSuccess={refresh}
         />

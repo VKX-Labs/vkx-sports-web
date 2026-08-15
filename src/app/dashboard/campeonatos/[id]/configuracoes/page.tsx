@@ -143,7 +143,7 @@ export default function ConfiguracoesPage() {
         </div>
       )}
 
-      {isOwner && (
+      {canEdit && (
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -152,7 +152,9 @@ export default function ConfiguracoesPage() {
                 Gestores e Seguidores
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Controle quem segue o campeonato e quem pode editar junto com você.
+                {isOwner
+                  ? "Controle quem segue o campeonato e quem pode editar junto com você."
+                  : "Veja quem segue e colabora com o campeonato. A gestão fica restrita ao criador."}
               </p>
             </div>
             <span className="rounded-full border border-slate-800 bg-slate-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -229,48 +231,50 @@ export default function ConfiguracoesPage() {
                       {MEMBER_ROLE_LABELS[member.role]}
                     </span>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {member.role === "FOLLOWER" && (
-                        <button
-                          onClick={() => handleGiveEditAccess(member)}
-                          disabled={busyMemberId === member.id}
-                          title="Dar acesso de edição"
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
-                        >
-                          {busyMemberId === member.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <UserCog className="w-3 h-3" />
-                          )}
-                          <span className="hidden sm:inline">Dar Acesso de Edição</span>
-                        </button>
-                      )}
+                    {isOwner && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {member.role === "FOLLOWER" && (
+                          <button
+                            onClick={() => handleGiveEditAccess(member)}
+                            disabled={busyMemberId === member.id}
+                            title="Dar acesso de edição"
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {busyMemberId === member.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <UserCog className="w-3 h-3" />
+                            )}
+                            <span className="hidden sm:inline">Dar Acesso de Edição</span>
+                          </button>
+                        )}
 
-                      {member.role === "EDITOR" && (
-                        <button
-                          onClick={() => handleRevokeEditAccess(member)}
-                          disabled={busyMemberId === member.id}
-                          title="Revogar acesso de edição"
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
-                        >
-                          {busyMemberId === member.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <UserX className="w-3 h-3" />
-                          )}
-                          <span className="hidden sm:inline">Revogar Acesso</span>
-                        </button>
-                      )}
+                        {member.role === "EDITOR" && (
+                          <button
+                            onClick={() => handleRevokeEditAccess(member)}
+                            disabled={busyMemberId === member.id}
+                            title="Revogar acesso de edição"
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {busyMemberId === member.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <UserX className="w-3 h-3" />
+                            )}
+                            <span className="hidden sm:inline">Revogar Acesso</span>
+                          </button>
+                        )}
 
-                      <button
-                        onClick={() => handleRemove(member)}
-                        disabled={busyMemberId === member.id}
-                        title="Remover seguidor"
-                        className="flex items-center gap-1 rounded-lg p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition disabled:opacity-50 cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => handleRemove(member)}
+                          disabled={busyMemberId === member.id}
+                          title="Remover seguidor"
+                          className="flex items-center gap-1 rounded-lg p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition disabled:opacity-50 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -11,6 +11,7 @@ import type {
 } from "@/types/championship-member";
 import { useAuth } from "@/providers/auth-provider";
 import { useChampionshipMembers } from "@/hooks/useChampionshipMembers";
+import { canEditChampionship } from "@/utils/permissions";
 
 interface WorkspaceContextValue {
   championship: Championship;
@@ -41,7 +42,11 @@ export function WorkspaceProvider({
   const isOwner = Boolean(user?.id && championship.user_id === user.id);
   const myRole =
     members.find((member) => member.user_id === user?.id)?.role ?? null;
-  const canEdit = isOwner || myRole === "EDITOR" || myRole === "ADMIN";
+  const canEdit = canEditChampionship({
+    userId: user?.id,
+    ownerId: championship.user_id,
+    myRole,
+  });
 
   return (
     <WorkspaceContext.Provider

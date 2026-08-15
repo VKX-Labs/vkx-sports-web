@@ -65,3 +65,20 @@ export async function updateTeamById(
   if (error) throw new Error(error.message);
   return data as Team;
 }
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  const { error: playersError } = await supabase
+    .from("players")
+    .update({ team_id: null })
+    .eq("team_id", teamId);
+
+  if (playersError) {
+    throw new Error(
+      `Erro ao desvincular jogadores da equipe: ${playersError.message}`
+    );
+  }
+
+  const { error } = await supabase.from("teams").delete().eq("id", teamId);
+
+  if (error) throw new Error(error.message);
+}
