@@ -226,13 +226,14 @@ export default function ChampionshipHome() {
       if (!championship?.id || !currentRound) {
         setSummary("");
         setExpired(false);
+        setTeamOfWeek(null);
         return;
       }
 
       try {
         const { data, error } = await supabase
           .from("round_summaries")
-          .select("content, updated_at")
+          .select("content, updated_at, team_of_week")
           .eq("championship_id", championship.id)
           .eq("round_number", currentRound.round_number)
           .maybeSingle();
@@ -246,11 +247,13 @@ export default function ChampionshipHome() {
 
         setSummary(isExpired ? "" : data?.content || "");
         setExpired(isExpired);
+        setTeamOfWeek(data?.team_of_week || null);
         setError(null);
       } catch (err: any) {
         if (isMissingTableError(err)) {
           setSummary("");
           setExpired(false);
+          setTeamOfWeek(null);
           setError(null);
           return;
         }

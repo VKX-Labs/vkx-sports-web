@@ -157,6 +157,7 @@ export class PlayerRepository {
       yellow_cards: 0,
       red_cards: 0,
       saves: 0,
+      tackles: 0,
       rating: 0.0,
     };
 
@@ -176,6 +177,7 @@ export class PlayerRepository {
     const yellow_cards = events.filter((e) => e.type === "YELLOW_CARD" && e.player_id === playerId).length;
     const red_cards = events.filter((e) => e.type === "RED_CARD" && e.player_id === playerId).length;
     const saves = events.filter((e) => e.type === "SAVE" && e.player_id === playerId).length;
+    const tackles = events.filter((e) => e.type === "TACKLE" && e.player_id === playerId).length;
 
     const ratedEvents = events.filter((e) => e.rating !== null && e.rating !== undefined);
     let rating = 0.0;
@@ -192,6 +194,7 @@ export class PlayerRepository {
       yellow_cards,
       red_cards,
       saves,
+      tackles,
       rating,
     };
   }

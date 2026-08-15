@@ -2,16 +2,55 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Trophy, Users, MapPin, Shield } from "lucide-react";
+import { Calendar, Trophy, Users, MapPin, Shield, Star } from "lucide-react";
 import { routes } from "@/lib/routes";
 import { usePublicChampionshipContext } from "@/app/(public)/[championshipSlug]/championship-context";
 import { PublicMatchCard } from "@/app/(public)/[championshipSlug]/components/PublicMatchCard";
 import { fetchPublicRounds, type PublicMatch } from "@/app/(public)/[championshipSlug]/lib/public-data";
+import TeamOfWeekField, { type TeamOfWeek } from "@/components/match/TeamOfWeekField";
+import { supabase } from "@/lib/supabase";
 
 export default function PublicChampionshipHomePage() {
   const { championship, seasonId } = usePublicChampionshipContext();
   const [matches, setMatches] = useState<PublicMatch[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
+  const [teamOfWeek, setTeamOfWeek] = useState<TeamOfWeek | null>(null);
+  const [teamOfWeekRound, setTeamOfWeekRound] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadTeamOfWeek() {
+      if (!championship?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("round_summaries")
+          .select("round_number, round_name, team_of_week")
+          .eq("championship_id", championship.id)
+          .not("team_of_week", "is", null)
+          .order("round_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (active && data?.team_of_week) {
+          setTeamOfWeek(data.team_of_week as TeamOfWeek);
+          setTeamOfWeekRound(data.round_name || `${data.round_number}ª Rodada`);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar seleção da rodada pública:", err);
+        if (active) setTeamOfWeek(null);
+      }
+    }
+
+    loadTeamOfWeek();
+
+    return () => {
+      active = false;
+    };
+  }, [championship?.id]);
 
   useEffect(() => {
     let active = true;
@@ -118,6 +157,18 @@ export default function PublicChampionshipHomePage() {
         <p className="text-sm text-slate-400 max-w-3xl">
           {championship.description}
         </p>
+      )}
+
+      {teamOfWeek && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+              Seleção da Rodada
+            </h2>
+          </div>
+          <TeamOfWeekField teamOfWeek={teamOfWeek} roundName={teamOfWeekRound} />
+        </section>
       )}
 
       <section className="space-y-3">

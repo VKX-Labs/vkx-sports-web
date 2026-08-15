@@ -8,6 +8,7 @@ export type EventType =
   | "PENALTY" 
   | "FOUL" 
   | "CORNER" 
+  | "TACKLE"
   | "WO";
 
 export interface MatchEvent {

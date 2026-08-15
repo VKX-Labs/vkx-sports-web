@@ -35,5 +35,5 @@ export interface MatchEventInput {
   match_id: string;
   player_id: string;
   team_id: string;
-  type: "GOAL" | "ASSIST" | "YELLOW_CARD" | "RED_CARD" | "SAVE";
+  type: "GOAL" | "ASSIST" | "YELLOW_CARD" | "RED_CARD" | "SAVE" | "TACKLE";
 }

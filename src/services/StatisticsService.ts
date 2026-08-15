@@ -28,6 +28,9 @@ export class StatisticsService {
     if (normalized.includes("SAVE") || normalized.includes("DEFESA")) {
       return { dbType: "SAVE", metricKey: "total_saves" };
     }
+    if (normalized.includes("TACKLE") || normalized.includes("DESARME")) {
+      return { dbType: "TACKLE", metricKey: "total_tackles" };
+    }
 
     return { dbType: normalized, metricKey: "total_goals" };
   }
@@ -122,12 +125,13 @@ export class StatisticsService {
       return eventsResult.slice(0, limit);
     }
 
-    const [goals, assists, yellowCards, redCards, saves] = await Promise.all([
+    const [goals, assists, yellowCards, redCards, saves, tackles] = await Promise.all([
       StatisticsRepository.getMatchEventsBySeason(seasonId, "GOAL"),
       StatisticsRepository.getMatchEventsBySeason(seasonId, "ASSIST"),
       StatisticsRepository.getMatchEventsBySeason(seasonId, "YELLOW_CARD"),
       StatisticsRepository.getMatchEventsBySeason(seasonId, "RED_CARD"),
       StatisticsRepository.getMatchEventsBySeason(seasonId, "SAVE"),
+      StatisticsRepository.getMatchEventsBySeason(seasonId, "TACKLE"),
     ]);
 
     return {
@@ -136,6 +140,7 @@ export class StatisticsService {
       topYellowCards: this.processEvents(yellowCards).slice(0, limit),
       topRedCards: this.processEvents(redCards).slice(0, limit),
       topSaves: this.processEvents(saves).slice(0, limit),
+      topTackles: this.processEvents(tackles).slice(0, limit),
     };
   }
 }

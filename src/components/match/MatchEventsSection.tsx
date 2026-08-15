@@ -7,7 +7,8 @@ import {
   ArrowRightLeft, 
   Handshake, 
   Activity,
-  ShieldAlert 
+  ShieldAlert,
+  Zap 
 } from "lucide-react";
 import { EventType } from "@/types";
 import { MatchEventItem, SimplePlayer } from "@/services/matchService";
@@ -70,6 +71,8 @@ export function MatchEventsSection({
         return <RectangleVertical className="w-3.5 h-3.5 text-red-500 fill-red-500/30" />;
       case "SAVE":
         return <ShieldAlert className="w-3.5 h-3.5 text-blue-400" />;
+      case "TACKLE":
+        return <Zap className="w-3.5 h-3.5 text-orange-400" />;
       case "SUBSTITUTION":
         return <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-400" />;
       default:
@@ -84,6 +87,7 @@ export function MatchEventsSection({
       case "YELLOW_CARD": return "Cartão Amarelo";
       case "RED_CARD": return "Cartão Vermelho";
       case "SAVE": return "Defesa de Goleiro";
+      case "TACKLE": return "Desarme";
       case "SUBSTITUTION": return "Substituição";
       default: return type;
     }
@@ -125,6 +129,7 @@ export function MatchEventsSection({
               <option value="YELLOW_CARD">Cartão Amarelo 🟨</option>
               <option value="RED_CARD">Cartão Vermelho 🟥</option>
               <option value="SAVE">Defesa de Goleiro 🧤</option>
+              <option value="TACKLE">Desarme ⚡</option>
               <option value="ASSIST">Assistência (Avulsa)</option>
               <option value="SUBSTITUTION">Substituição 🔄</option>
             </select>

@@ -93,6 +93,55 @@ const POSITION_LINES: Record<string, PlayerPosition[]> = {
 
 const LINE_SLOTS: Record<string, number> = { GK: 1, DEF: 4, MID: 3, ATT: 3 };
 
+// Sinônimos comuns de posição (cadastros genéricos, nomes curtos, termos
+// do jogo) normalizados para as posições oficiais do app.
+const POSITION_ALIASES: Record<string, PlayerPosition> = {
+  GK: "GOLEIRO",
+  GOL: "GOLEIRO",
+  GOLEIRO: "GOLEIRO",
+  DEF: "ZAGUEIRO",
+  DEFENSOR: "ZAGUEIRO",
+  DEFESA: "ZAGUEIRO",
+  ZAG: "ZAGUEIRO",
+  ZAGUEIRO: "ZAGUEIRO",
+  LB: "LATERAL_ESQUERDO",
+  LE: "LATERAL_ESQUERDO",
+  LATERAL_ESQUERDO: "LATERAL_ESQUERDO",
+  RB: "LATERAL_DIREITO",
+  LD: "LATERAL_DIREITO",
+  LATERAL_DIREITO: "LATERAL_DIREITO",
+  LATERAL: "LATERAL_DIREITO",
+  VOL: "VOLANTE",
+  VOLANTE: "VOLANTE",
+  MEI: "MEIA_ATACANTE",
+  MEIA: "MEIA_ATACANTE",
+  MEIO: "MEIA_ATACANTE",
+  MEIA_ATACANTE: "MEIA_ATACANTE",
+  MID: "MEIA_ATACANTE",
+  CM: "MEIA_ATACANTE",
+  PONTA_DIREITA: "PONTA_DIREITA",
+  PD: "PONTA_DIREITA",
+  PONTA_ESQUERDA: "PONTA_ESQUERDA",
+  PE: "PONTA_ESQUERDA",
+  ATT: "CENTROAVANTE",
+  ATA: "CENTROAVANTE",
+  ATACANTE: "CENTROAVANTE",
+  CA: "CENTROAVANTE",
+  ST: "CENTROAVANTE",
+  CENTROAVANTE: "CENTROAVANTE",
+};
+
+function normalizePositionInput(value?: string | null): PlayerPosition | null {
+  if (!value) return null;
+  const key = value
+    .toUpperCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z]/g, "");
+  return POSITION_ALIASES[key] ?? null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GROQ_API_KEY;
@@ -160,9 +209,11 @@ ${roundInput}
 
 TAREFAS:
 1. ATRIBUIR nota de 0.0 a 10.0 (UMA casa decimal) para CADA atleta listado nas escalações, baseado em:
-   - Gols, assistências e defesas (eventos oficiais);
-   - Importância dos eventos (gol que decide, defesa em momento crítico);
+   - Gols, assistências, defesas e desarmes (eventos oficiais, incl. [TACKLE]);
+   - Importância dos eventos (gol que decide, defesa em momento crítico, desarme decisivo);
    - Impacto no resultado;
+   - Critérios por posição: GOLEIRO/DEFENSORES valorizam defesas e desarmes; VOLANTES/MEIAS valorizam desarmes e assistências; ATACANTES valorizam gols;
+   - Manter a meta limpa (0 gols sofridos) valoriza goleiros e defensores;
    - Nota-base razoável (6.0) para quem apenas cumpriu o esperado;
    - NUNCA inventar eventos, gols ou atletas que não constem nos dados.
 
@@ -170,6 +221,7 @@ TAREFAS:
    - Escalação tática balanceada (4-3-3 ou 4-4-2), respeitando as posições reais informadas;
    - 1 GOLEIRO, 4 defensores (ZAGUEIRO/LATERAIS), 3 meias (VOLANTE/MEIA_ATACANTE) e 3 atacantes (PONTA/CENTROAVANTE);
    - Priorizar as maiores notas, garantindo pelo menos uma posição por linha do campo;
+   - IMPORTANTE: se a rodada tiver MENOS de 11 atletas com ações registradas (ex: campeonato society/amador), monte uma ESCALAÇÃO PARCIAL com TODOS os atletas disponíveis, distribuídos por suas linhas — nunca inventar atletas ou posições;
    - O melhor jogador da rodada vira o "Craque da Rodada";
    - Montar banco de reservas (até 5) com os próximos melhores.
 
@@ -274,8 +326,9 @@ TAREFAS:
     const positionFromSquads = new Map<string, PlayerPosition>();
     for (const m of matches) {
       for (const s of m.squads || []) {
-        if (s.player_id && s.position && PLAYER_POSITIONS.includes(s.position as PlayerPosition)) {
-          positionFromSquads.set(s.player_id, s.position as PlayerPosition);
+        const position = normalizePositionInput(s.position);
+        if (s.player_id && position) {
+          positionFromSquads.set(s.player_id, position);
         }
       }
     }
@@ -285,9 +338,8 @@ TAREFAS:
       if (db) return db;
       const squad = positionFromSquads.get(playerId);
       if (squad) return squad;
-      if (aiPosition && PLAYER_POSITIONS.includes(aiPosition as PlayerPosition)) {
-        return aiPosition as PlayerPosition;
-      }
+      const ai = normalizePositionInput(aiPosition);
+      if (ai) return ai;
       return null;
     }
 
@@ -346,6 +398,49 @@ TAREFAS:
 
       if (upsertError && !isMissingTableError(upsertError)) {
         console.error("Erro ao salvar notas em match_player_stats:", upsertError);
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 6. Persistir a Seleção da Rodada (11 Ideal) em round_summaries,
+    //    preservando o content (boletim) já existente, se houver.
+    // ------------------------------------------------------------------
+    if (teamOfTheWeek.lineup.length > 0) {
+      const summaryPayload = {
+        championship_id: championshipId,
+        round_number: roundNumber,
+        round_name: roundName,
+        team_of_week: teamOfTheWeek as unknown as object,
+      };
+
+      try {
+        const { data: existingSummary } = await supabase
+          .from("round_summaries")
+          .select("id")
+          .eq("championship_id", championshipId)
+          .eq("round_number", roundNumber)
+          .maybeSingle();
+
+        if (existingSummary) {
+          const { error: updateError } = await supabase
+            .from("round_summaries")
+            .update(summaryPayload)
+            .eq("id", existingSummary.id);
+
+          if (updateError && !isMissingTableError(updateError)) {
+            console.error("Erro ao atualizar seleção da rodada:", updateError);
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from("round_summaries")
+            .insert({ ...summaryPayload, content: "" });
+
+          if (insertError && !isMissingTableError(insertError)) {
+            console.error("Erro ao salvar seleção da rodada:", insertError);
+          }
+        }
+      } catch (saveError) {
+        console.error("Erro ao persistir seleção da rodada:", saveError);
       }
     }
 

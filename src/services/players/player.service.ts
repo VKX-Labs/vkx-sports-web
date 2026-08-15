@@ -158,6 +158,7 @@ export class PlayerService {
       let yellowCards = 0;
       let redCards = 0;
       let saves = 0;
+      let tackles = 0;
 
       eventList.forEach((e: any) => {
         const rawType = String(e.type || e.event_type || "").trim().toUpperCase();
@@ -167,6 +168,7 @@ export class PlayerService {
           if (["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"].includes(rawType)) yellowCards++;
           if (["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"].includes(rawType)) redCards++;
           if (["SAVE", "DEFESA"].includes(rawType)) saves++;
+          if (["TACKLE", "DESARME"].includes(rawType)) tackles++;
         }
 
         if (String(e.assist_player_id) === String(playerId)) {
@@ -183,6 +185,7 @@ export class PlayerService {
         yellow_cards: yellowCards,
         red_cards: redCards,
         saves,
+        tackles,
         rating: averageRating,
       };
     } catch (err) {
@@ -194,6 +197,7 @@ export class PlayerService {
         yellow_cards: 0,
         red_cards: 0,
         saves: 0,
+        tackles: 0,
         rating: 0.0,
       };
     }

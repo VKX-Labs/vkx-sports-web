@@ -41,28 +41,25 @@ function initials(name: string): string {
 function PlayerCell({
   player,
   isStar,
-  compact,
 }: {
   player: TeamOfWeekPlayer;
   isStar?: boolean;
-  compact?: boolean;
 }) {
-  const size = compact ? "w-12 h-12" : "w-12 h-12 md:w-16 md:h-16";
   return (
     <div
-      className={`flex flex-col items-center gap-1 ${
-        compact ? "w-14" : "w-14 md:w-20"
+      className={`relative flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 shadow-lg shadow-black/40 border ${
+        isStar
+          ? "bg-amber-500/10 border-amber-400/40"
+          : "bg-zinc-900/90 border-zinc-600/50"
       }`}
     >
       <div
-        className={`relative ${size} rounded-full overflow-hidden flex items-center justify-center border-2 bg-zinc-900 shrink-0 ${
-          isStar
-            ? "border-amber-400 shadow-lg shadow-amber-500/25"
-            : "border-zinc-700"
+        className={`relative w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden flex items-center justify-center border-2 bg-zinc-950 shrink-0 ${
+          isStar ? "border-amber-400" : "border-zinc-600"
         }`}
       >
         {isStar && (
-          <Trophy className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 text-amber-400 drop-shadow" />
+          <Trophy className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-4 text-amber-400 drop-shadow" />
         )}
         {player.photo_url ? (
           <img
@@ -71,18 +68,18 @@ function PlayerCell({
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-[10px] md:text-xs font-bold text-zinc-400">
+          <span className="text-xs md:text-sm font-bold text-zinc-300">
             {initials(player.player_name)}
           </span>
         )}
-        <span className="absolute -bottom-1 -right-1 text-[9px] font-bold text-amber-400 bg-zinc-950 rounded px-1 border border-amber-400/40 leading-tight">
+        <span className="absolute -bottom-1.5 -right-1 text-[10px] md:text-[11px] font-bold text-amber-400 bg-zinc-950 rounded px-1.5 border border-amber-400/50 leading-tight">
           {player.rating.toFixed(1)}
         </span>
       </div>
-      <span className="text-[9px] md:text-[10px] font-semibold text-zinc-200 text-center truncate w-full">
+      <span className="text-[10px] md:text-xs font-semibold text-zinc-100 text-center truncate w-full">
         {player.player_name}
       </span>
-      <span className="text-[8px] md:text-[9px] text-zinc-500 text-center truncate w-full">
+      <span className="text-[9px] md:text-[10px] text-zinc-400 text-center truncate w-full">
         {positionLabel(player.position)}
       </span>
     </div>
@@ -98,9 +95,15 @@ export default function TeamOfWeekField({
 }) {
   const { attack, midfield, defense, goalkeeper } = useMemo(() => {
     const attack = teamOfWeek.lineup.filter((p) => p.position && LINE_ATT.includes(p.position));
-    const midfield = teamOfWeek.lineup.filter((p) => p.position && LINE_MID.includes(p.position));
     const defense = teamOfWeek.lineup.filter((p) => p.position && LINE_DEF.includes(p.position));
     const goalkeeper = teamOfWeek.lineup.filter((p) => p.position === "GOLEIRO");
+    const midfield = teamOfWeek.lineup.filter((p) => p.position && LINE_MID.includes(p.position));
+
+    // Jogadores sem posição cadastrada (NULL/desconhecida) são alocados
+    // no meio-campo (linha genérica) para nunca sumirem do campo.
+    const positionless = teamOfWeek.lineup.filter((p) => !p.position);
+    midfield.push(...positionless);
+
     return { attack, midfield, defense, goalkeeper };
   }, [teamOfWeek.lineup]);
 
@@ -125,36 +128,59 @@ export default function TeamOfWeekField({
         </span>
       </div>
 
-      <div className="relative overflow-x-auto">
-        <div className="relative min-w-[320px] aspect-[4/3] md:aspect-[16/10] rounded-xl bg-gradient-to-b from-emerald-950/60 via-emerald-900/40 to-emerald-950/70 border border-zinc-800 overflow-hidden">
+      <div className="relative overflow-x-auto scroller-smooth w-full">
+        <div className="relative min-w-[340px] aspect-[4/5] md:aspect-[16/10] rounded-xl bg-gradient-to-b from-emerald-950/70 via-emerald-900/40 to-emerald-950/80 border border-zinc-800 overflow-hidden">
           <div className="absolute inset-y-0 left-1/2 w-px bg-emerald-400/15 -translate-x-1/2" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border border-emerald-400/15" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full border border-emerald-400/15" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full border border-emerald-400/10" />
 
-          <div className="absolute inset-0 flex flex-col justify-between py-3 md:py-5 px-2">
-            <div className="flex items-center justify-center gap-2 md:gap-5">
+          <div className="absolute inset-0 grid grid-rows-4 gap-1 px-1.5 py-2.5 md:px-3 md:py-4">
+            <div className="flex items-center justify-center gap-2 md:gap-5 min-h-0">
               {attack.length > 0
-                ? attack.map((p) => <PlayerCell key={p.player_id} player={p} compact />)
-                : <span className="text-[9px] text-zinc-600">Atacantes</span>}
+                ? attack.map((p) => (
+                    <PlayerCell
+                      key={p.player_id}
+                      player={p}
+                      isStar={starPlayer?.player_id === p.player_id}
+                    />
+                  ))
+                : <span className="text-[10px] md:text-xs font-medium text-emerald-300/50">Atacantes</span>}
             </div>
 
-            <div className="flex items-center justify-center gap-2 md:gap-5">
+            <div className="flex items-center justify-center gap-2 md:gap-5 min-h-0">
               {midfield.length > 0
-                ? midfield.map((p) => <PlayerCell key={p.player_id} player={p} compact />)
-                : <span className="text-[9px] text-zinc-600">Meio-campo</span>}
+                ? midfield.map((p) => (
+                    <PlayerCell
+                      key={p.player_id}
+                      player={p}
+                      isStar={starPlayer?.player_id === p.player_id}
+                    />
+                  ))
+                : <span className="text-[10px] md:text-xs font-medium text-emerald-300/50">Meio-campo</span>}
             </div>
 
-            <div className="flex items-center justify-center gap-2 md:gap-4">
+            <div className="flex items-center justify-center gap-2 md:gap-4 min-h-0">
               {defense.length > 0
-                ? defense.map((p) => <PlayerCell key={p.player_id} player={p} compact />)
-                : <span className="text-[9px] text-zinc-600">Defesa</span>}
+                ? defense.map((p) => (
+                    <PlayerCell
+                      key={p.player_id}
+                      player={p}
+                      isStar={starPlayer?.player_id === p.player_id}
+                    />
+                  ))
+                : <span className="text-[10px] md:text-xs font-medium text-emerald-300/50">Defesa</span>}
             </div>
 
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center min-h-0">
               {goalkeeper.length > 0
                 ? goalkeeper.map((p) => (
-                    <PlayerCell key={p.player_id} player={p} compact isStar={starPlayer?.player_id === p.player_id} />
+                    <PlayerCell
+                      key={p.player_id}
+                      player={p}
+                      isStar={starPlayer?.player_id === p.player_id}
+                    />
                   ))
-                : <span className="text-[9px] text-zinc-600">Goleiro</span>}
+                : <span className="text-[10px] md:text-xs font-medium text-emerald-300/50">Goleiro</span>}
             </div>
           </div>
         </div>

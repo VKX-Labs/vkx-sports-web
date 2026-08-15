@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { X, Upload, Loader2, User, Trophy, Shield, Star } from "lucide-react";
+import { X, Upload, Loader2, User, Trophy, Shield, Star, Zap } from "lucide-react";
 import { PlayerService } from "@/services/players/player.service";
 import { PLAYER_POSITIONS, POSITION_LABELS } from "@/types/player";
 import type { Player, UpdatePlayerInput, PlayerStats } from "@/types/player";
@@ -38,6 +38,7 @@ export default function EditPlayerModal({
     yellow_cards: 0,
     red_cards: 0,
     saves: 0,
+    tackles: 0,
     rating: 0.0,
   });
 
@@ -57,6 +58,7 @@ export default function EditPlayerModal({
         yellow_cards: 0,
         red_cards: 0,
         saves: 0,
+        tackles: 0,
         rating: 0.0,
       });
     } finally {
@@ -217,6 +219,13 @@ export default function EditPlayerModal({
                 <span className="block text-[10px] font-medium text-slate-400">Cartões</span>
                 <span className="text-sm font-black text-slate-300">
                   <span className="text-amber-400">{stats.yellow_cards}</span> / <span className="text-rose-500">{stats.red_cards}</span>
+                </span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-lg text-center border border-slate-850">
+                <span className="block text-[10px] font-medium text-slate-400">Desarmes</span>
+                <span className="text-sm font-black text-orange-400 flex items-center justify-center gap-0.5">
+                  <Zap className="w-3 h-3 inline" />
+                  {stats.tackles}
                 </span>
               </div>
             </div>

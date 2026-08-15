@@ -9,6 +9,19 @@
   --color-brand-textSecondary: #94A3B8;
 }
 
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scroller-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 :root {
   background-color: var(--color-brand-dark);
   color: var(--color-brand-textPrimary);

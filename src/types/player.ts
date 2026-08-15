@@ -46,6 +46,7 @@ export interface PlayerStats {
   yellow_cards: number;
   red_cards: number;
   saves: number;
+  tackles: number;
   rating: number;
 }
 
