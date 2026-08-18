@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
+import { groqChatCompletion } from "@/lib/groq";
 import { PLAYER_POSITIONS } from "@/types/player";
 import type { PlayerPosition } from "@/types/player";
 
@@ -240,9 +240,8 @@ TAREFAS:
 }
 `;
 
-    const groq = new Groq({ apiKey });
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+    const response = await groqChatCompletion({
+      apiKey,
       messages: [
         {
           role: "system",

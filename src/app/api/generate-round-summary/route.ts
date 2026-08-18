@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
 import { createServerClient } from "@supabase/ssr";
+import { groqChatCompletion } from "@/lib/groq";
 
 function isMissingTableError(err: any): boolean {
   const message = `${err?.message || ""} ${err?.error_description || ""}`.toLowerCase();
@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const groq = new Groq({ apiKey });
     const body = await req.json();
     const { championshipId, championshipName, roundNumber, roundName, matches } =
       body;
@@ -157,8 +156,8 @@ ${confrontosFormatted}
 (Escolha o principal jogador com base no desempenho da rodada).
 `;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+    const response = await groqChatCompletion({
+      apiKey,
       messages: [
         { role: "system", content: "Você é um jornalista esportivo especialista em futebol e análises táticas. REGRA CRÍTICA PARA OS ESCUDOS: Na seção CONFRONTOS DA RODADA, você deve usar EXATAMENTE a linha formatada com as URLs das imagens fornecidas no input. Não repita o escudo do time mandante no time visitante. Cada time possui sua própria imagem correspondente." },
         { role: "user", content: prompt },
