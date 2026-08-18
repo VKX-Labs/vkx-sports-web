@@ -4,7 +4,7 @@ import type { TeamStanding } from "@/types/tournament";
 export const RoundRobinService = {
   calculateStandings(
     teams: { id: string; name: string; badge_url?: string; group_name?: string | null }[],
-    matches: Pick<Match, "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score">[]
+    matches: Pick<Match, "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score" | "is_wo" | "wo_type">[]
   ): TeamStanding[] {
     const map = new Map<string, TeamStanding>();
 
@@ -38,11 +38,48 @@ export const RoundRobinService = {
 
         if (!home || !away) return;
 
+        home.played += 1;
+        away.played += 1;
+
+        // ── Regras de W.O. ──────────────────────────────────
+        if (m.is_wo) {
+          const wo = m.wo_type;
+
+          if (wo === "home") {
+            // Mandante deu W.O. → Visitante vence 1x0
+            home.goals_for += 0;
+            home.goals_against += 1;
+            away.goals_for += 1;
+            away.goals_against += 0;
+            away.wins += 1;
+            away.points += 3;
+            home.losses += 1;
+          } else if (wo === "away") {
+            // Visitante deu W.O. → Mandante vence 1x0
+            home.goals_for += 1;
+            home.goals_against += 0;
+            away.goals_for += 0;
+            away.goals_against += 1;
+            home.wins += 1;
+            home.points += 3;
+            away.losses += 1;
+          } else {
+            // Duplo W.O. → 0x0, ambos perdem, 0 pts
+            home.goals_for += 0;
+            home.goals_against += 0;
+            away.goals_for += 0;
+            away.goals_against += 0;
+            home.losses += 1;
+            away.losses += 1;
+          }
+
+          return;
+        }
+
+        // ── Lógica normal de placar ─────────────────────────
         const hScore = m.home_score ?? 0;
         const aScore = m.away_score ?? 0;
 
-        home.played += 1;
-        away.played += 1;
         home.goals_for += hScore;
         home.goals_against += aScore;
         away.goals_for += aScore;

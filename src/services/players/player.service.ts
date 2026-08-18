@@ -162,19 +162,20 @@ export class PlayerService {
 
       eventList.forEach((e: any) => {
         const rawType = String(e.type || e.event_type || "").trim().toUpperCase();
+        const qty = Math.max(1, Number(e.quantity) || 1);
 
         if (String(e.player_id) === String(playerId)) {
-          if (["GOAL", "GOL"].includes(rawType)) goals++;
-          if (["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"].includes(rawType)) yellowCards++;
-          if (["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"].includes(rawType)) redCards++;
-          if (["SAVE", "DEFESA"].includes(rawType)) saves++;
-          if (["TACKLE", "DESARME"].includes(rawType)) tackles++;
+          if (["GOAL", "GOL"].includes(rawType)) goals += qty;
+          if (["YELLOW_CARD", "YELLOW", "AMARELO", "CARTAO_AMARELO"].includes(rawType)) yellowCards += qty;
+          if (["RED_CARD", "RED", "VERMELHO", "CARTAO_VERMELHO"].includes(rawType)) redCards += qty;
+          if (["SAVE", "DEFESA"].includes(rawType)) saves += qty;
+          if (["TACKLE", "DESARME"].includes(rawType)) tackles += qty;
         }
 
         if (String(e.assist_player_id) === String(playerId)) {
-          assists++;
+          assists += qty;
         } else if (String(e.player_id) === String(playerId) && ["ASSIST", "ASSISTENCIA", "ASSISTÊNCIA"].includes(rawType)) {
-          assists++;
+          assists += qty;
         }
       });
 

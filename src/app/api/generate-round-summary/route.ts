@@ -80,27 +80,42 @@ export async function POST(req: NextRequest) {
 
         const goals = events
           .filter((e: any) => e.type === "GOAL" || e.type === "GOL")
-          .map((e: any) => `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})`)
+          .map((e: any) => {
+            const qty = Number(e.quantity) || 1;
+            return `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qty > 1 ? ` x${qty}` : ""}`;
+          })
           .join(", ");
 
         const assists = events
           .filter((e: any) => e.type === "ASSIST" || e.type === "ASSISTENCIA")
-          .map((e: any) => `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})`)
+          .map((e: any) => {
+            const qty = Number(e.quantity) || 1;
+            return `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qty > 1 ? ` x${qty}` : ""}`;
+          })
           .join(", ");
 
         const yellowCards = events
           .filter((e: any) => e.type === "YELLOW_CARD" || e.type === "AMARELO")
-          .map((e: any) => `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})`)
+          .map((e: any) => {
+            const qty = Number(e.quantity) || 1;
+            return `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qty > 1 ? ` x${qty}` : ""}`;
+          })
           .join(", ");
 
         const redCards = events
           .filter((e: any) => e.type === "RED_CARD" || e.type === "VERMELHO")
-          .map((e: any) => `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})`)
+          .map((e: any) => {
+            const qty = Number(e.quantity) || 1;
+            return `${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qty > 1 ? ` x${qty}` : ""}`;
+          })
           .join(", ");
 
         const saves = events
           .filter((e: any) => e.type === "SAVE" || e.type === "DEFESA")
-          .map((e: any) => `${e.player_name || e.player?.name || "Goleiro"} (${e.team_name || e.team?.name || homeTeam})`)
+          .map((e: any) => {
+            const qty = Number(e.quantity) || 1;
+            return `${e.player_name || e.player?.name || "Goleiro"} (${e.team_name || e.team?.name || homeTeam})${qty > 1 ? ` x${qty}` : ""}`;
+          })
           .join(", ");
 
         return `

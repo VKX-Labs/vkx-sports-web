@@ -4,9 +4,11 @@ export const PLAYER_POSITIONS = [
   "LATERAL_DIREITO",
   "LATERAL_ESQUERDO",
   "VOLANTE",
+  "MEIA_CENTRAL",
   "MEIA_ATACANTE",
   "PONTA_DIREITA",
   "PONTA_ESQUERDA",
+  "SEGUNDO_ATACANTE",
   "CENTROAVANTE",
 ] as const;
 
@@ -18,9 +20,11 @@ export const POSITION_LABELS: Record<PlayerPosition, string> = {
   LATERAL_DIREITO: "Lateral Direito",
   LATERAL_ESQUERDO: "Lateral Esquerdo",
   VOLANTE: "Volante",
+  MEIA_CENTRAL: "Meia Central",
   MEIA_ATACANTE: "Meia Atacante",
   PONTA_DIREITA: "Ponta Direita",
   PONTA_ESQUERDA: "Ponta Esquerda",
+  SEGUNDO_ATACANTE: "Segundo Atacante",
   CENTROAVANTE: "Centroavante",
 };
 

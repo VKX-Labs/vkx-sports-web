@@ -126,24 +126,24 @@ export function MatchScoreCard({
         </button>
 
         {showWoMenu && (
-          <div className="absolute right-0 top-6 z-30 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl p-1 space-y-1">
+          <div className="absolute right-0 top-6 z-30 w-52 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl p-1 space-y-1">
             <button
               onClick={() => { onDeclareWO("home"); setShowWoMenu(false); }}
               className="w-full text-left px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 rounded"
             >
-              Vitória Mandante (3x0)
+              W.O. — Ausência Visitante (1x0)
             </button>
             <button
               onClick={() => { onDeclareWO("away"); setShowWoMenu(false); }}
               className="w-full text-left px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 rounded"
             >
-              Vitória Visitante (0x3)
+              W.O. — Ausência Mandante (0x1)
             </button>
             <button
               onClick={() => { onDeclareWO("double_wo"); setShowWoMenu(false); }}
               className="w-full text-left px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded"
             >
-              Duplo W.O.
+              Duplo W.O. (0x0)
             </button>
           </div>
         )}

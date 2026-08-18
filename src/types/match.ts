@@ -22,6 +22,8 @@ export interface Match {
   external_match_id: string | null;
   next_match_id: string | null;
   winner_id: string | null;
+  is_wo?: boolean | null;
+  wo_type?: "home" | "away" | "double" | null;
   home_score_leg2: number | null;
   away_score_leg2: number | null;
   penalties_home: number | null;

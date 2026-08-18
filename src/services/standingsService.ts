@@ -17,7 +17,7 @@ export type PlayoffPhase = (typeof PLAYOFF_PHASES)[number];
 export const StandingsService = {
   calculateStandings(
     teams: { id: string; name: string; badge_url?: string; group_name?: string | null }[],
-    matches: Pick<Match, "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score">[]
+    matches: Pick<Match, "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score" | "is_wo" | "wo_type">[]
   ): TeamStanding[] {
     return RoundRobinService.calculateStandings(teams, matches);
   },

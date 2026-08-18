@@ -103,7 +103,7 @@ export async function fetchPublicStandings(
 
   const { data: matches, error: matchesError } = await supabase
     .from("matches")
-    .select("status, home_team_id, away_team_id, home_score, away_score")
+    .select("status, home_team_id, away_team_id, home_score, away_score, is_wo, wo_type")
     .eq("season_id", seasonId);
 
   if (matchesError) throw matchesError;
@@ -112,7 +112,7 @@ export async function fetchPublicStandings(
     teams || [],
     (matches || []) as Pick<
       Match,
-      "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score"
+      "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score" | "is_wo" | "wo_type"
     >[]
   );
 }

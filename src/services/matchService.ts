@@ -17,6 +17,7 @@ export interface MatchEventItem {
   assist_player_id?: string | null;
   type: EventType;
   minute?: string | number | null;
+  quantity?: number;
 }
 
 export interface SaveMatchResultParams {
@@ -29,6 +30,8 @@ export interface SaveMatchResultParams {
   penaltiesAway?: number | null;
   events?: MatchEventItem[];
   isTwoLegs?: boolean;
+  is_wo?: boolean;
+  wo_type?: "home" | "away" | "double";
 }
 
 export const MatchService = {
@@ -81,6 +84,7 @@ export const MatchService = {
       assist_player_id: e.assist_player_id,
       type: e.type as EventType,
       minute: e.minute !== null && e.minute !== undefined ? String(e.minute) : "",
+      quantity: e.quantity ?? 1,
     }));
 
     return {
@@ -101,6 +105,8 @@ export const MatchService = {
     penaltiesAway = null,
     events = [],
     isTwoLegs = false,
+    is_wo = false,
+    wo_type,
   }: SaveMatchResultParams) {
     await assertMatchEditor(matchId);
 
@@ -108,6 +114,8 @@ export const MatchService = {
       home_score: homeScore ?? 0,
       away_score: awayScore ?? 0,
       status: "finished",
+      is_wo,
+      wo_type: wo_type ?? null,
     };
 
     if (homeScoreLeg2 !== null && homeScoreLeg2 !== undefined) {
@@ -145,6 +153,7 @@ export const MatchService = {
           assist_player_id: e.assist_player_id || null,
           type: e.type,
           minute: isNaN(Number(parsedMinute)) ? null : parsedMinute,
+          quantity: e.quantity && e.quantity > 1 ? e.quantity : 1,
         };
       });
 

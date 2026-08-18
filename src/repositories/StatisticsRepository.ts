@@ -4,6 +4,7 @@ export interface RawMatchEvent {
   player_id: string | null;
   assist_player_id: string | null;
   type: string;
+  quantity: number;
   players: {
     id: string;
     name: string;
@@ -63,7 +64,7 @@ export class StatisticsRepository {
 
       const { data: events, error: eventsError } = await supabase
         .from("match_events")
-        .select("player_id, assist_player_id, type")
+        .select("player_id, assist_player_id, type, quantity")
         .in("match_id", matchIds)
         .eq("type", eventType);
 
@@ -75,23 +76,46 @@ export class StatisticsRepository {
         return [];
       }
 
-      if (!events || events.length === 0) {
+      let allEvents = events || [];
+
+      // Para ASSIST, buscar também eventos GOAL com assist_player_id
+      if (eventType === "ASSIST") {
+        const { data: goalEvents } = await supabase
+          .from("match_events")
+          .select("player_id, assist_player_id, type, quantity")
+          .in("match_id", matchIds)
+          .eq("type", "GOAL")
+          .not("assist_player_id", "is", null);
+
+        if (goalEvents && goalEvents.length > 0) {
+          const assistFromGoals = goalEvents.map((e) => ({
+            player_id: e.assist_player_id,
+            assist_player_id: e.assist_player_id,
+            type: "ASSIST",
+            quantity: e.quantity ?? 1,
+          }));
+          allEvents = [...allEvents, ...assistFromGoals];
+        }
+      }
+
+      if (allEvents.length === 0) {
         return [];
       }
 
       const allPlayerIds = Array.from(
         new Set(
-          events
+          allEvents
             .flatMap((e) => [e.player_id, e.assist_player_id])
             .filter((id): id is string => Boolean(id))
         )
       );
 
       if (allPlayerIds.length === 0) {
-        return events.map((e) => ({
+        return allEvents.map((e) => ({
           player_id: e.player_id,
           assist_player_id: e.assist_player_id,
           type: e.type,
+          quantity: e.quantity ?? 1,
           players: null,
           assist_player: null,
         }));
@@ -117,10 +141,11 @@ export class StatisticsRepository {
 
       const playersMap = new Map((playersData || []).map((p: any) => [p.id, p]));
 
-      return events.map((e) => ({
+      return allEvents.map((e) => ({
         player_id: e.player_id,
         assist_player_id: e.assist_player_id,
         type: e.type,
+        quantity: e.quantity ?? 1,
         players: e.player_id ? playersMap.get(e.player_id) || null : null,
         assist_player: e.assist_player_id ? playersMap.get(e.assist_player_id) || null : null,
       }));

@@ -87,8 +87,8 @@ const aiResponseSchema = z.object({
 const POSITION_LINES: Record<string, PlayerPosition[]> = {
   GK: ["GOLEIRO"],
   DEF: ["ZAGUEIRO", "LATERAL_DIREITO", "LATERAL_ESQUERDO"],
-  MID: ["VOLANTE", "MEIA_ATACANTE"],
-  ATT: ["PONTA_DIREITA", "PONTA_ESQUERDA", "CENTROAVANTE"],
+  MID: ["VOLANTE", "MEIA_CENTRAL", "MEIA_ATACANTE"],
+  ATT: ["PONTA_DIREITA", "PONTA_ESQUERDA", "SEGUNDO_ATACANTE", "CENTROAVANTE"],
 };
 
 const LINE_SLOTS: Record<string, number> = { GK: 1, DEF: 4, MID: 3, ATT: 3 };
@@ -113,16 +113,24 @@ const POSITION_ALIASES: Record<string, PlayerPosition> = {
   LATERAL: "LATERAL_DIREITO",
   VOL: "VOLANTE",
   VOLANTE: "VOLANTE",
+  MC: "MEIA_CENTRAL",
+  MEC: "MEIA_CENTRAL",
+  MEIA_CENTRAL: "MEIA_CENTRAL",
   MEI: "MEIA_ATACANTE",
   MEIA: "MEIA_ATACANTE",
   MEIO: "MEIA_ATACANTE",
   MEIA_ATACANTE: "MEIA_ATACANTE",
+  MCO: "MEIA_ATACANTE",
   MID: "MEIA_ATACANTE",
   CM: "MEIA_ATACANTE",
   PONTA_DIREITA: "PONTA_DIREITA",
   PD: "PONTA_DIREITA",
   PONTA_ESQUERDA: "PONTA_ESQUERDA",
   PE: "PONTA_ESQUERDA",
+  SS: "SEGUNDO_ATACANTE",
+  SA: "SEGUNDO_ATACANTE",
+  "9": "SEGUNDO_ATACANTE",
+  SEGUNDO_ATACANTE: "SEGUNDO_ATACANTE",
   ATT: "CENTROAVANTE",
   ATA: "CENTROAVANTE",
   ATACANTE: "CENTROAVANTE",
@@ -178,8 +186,11 @@ export async function POST(req: NextRequest) {
         const awayTeam = m.away_team?.name || `Visitante ${idx + 1}`;
         const events = (m.events || [])
           .map(
-            (e: any) =>
-              `- [${e.type}] ${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${e.minute ? ` aos ${e.minute}min` : ""}`
+            (e: any) => {
+              const qty = Number(e.quantity) || 1;
+              const qtyLabel = qty > 1 ? ` (x${qty})` : "";
+              return `- [${e.type}] ${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qtyLabel}${e.minute ? ` aos ${e.minute}min` : ""}`;
+            }
           )
           .join("\n");
         const squads = (m.squads || [])
@@ -209,17 +220,36 @@ ${roundInput}
 
 TAREFAS:
 1. ATRIBUIR nota de 0.0 a 10.0 (UMA casa decimal) para CADA atleta listado nas escalações, baseado em:
-   - Gols, assistências, defesas e desarmes (eventos oficiais, incl. [TACKLE]);
+
+   CRITÉRIOS POR POSIÇÃO:
+   - GOLEIRO: Defesas, clean sheet (meta limpa), distribuição, posicionamento;
+   - DEFENSORES (ZAGUEIRO, LATERAL_DIREITO, LATERAL_ESQUERDO):
+     * Desarmes (tackles) — evento [TACKLE] nos dados;
+     * Defesas/Cortes — desarmes que interrompem ataques;
+     * Posição da Equipe na Tabela (se disponível nos dados);
+     * Resultado do Jogo: vitória valoriza (+), empate neutro, derrota penaliza;
+     * Clean sheet (0 gols sofridos) = bônus significativo;
+     * Nota base para defensores: 6.0 (apenas cumpriu o esperado);
+   - VOLANTE: Desarmes, intercepções, distribuição, assistências;
+   - MEIA_CENTRAL: Criatividade, passes-chave, assistências, controle de posse;
+   - MEIA_ATACANTE: Gols, assists, criação de jogadas, dribles, finalizações;
+   - PONTAS (PONTA_DIREITA, PONTA_ESQUERDA): Velocidade, cruzamentos, gols, assists;
+   - SEGUNDO_ATACANTE: Gols, assists, mobilidade, participação nas jogadas de ataque;
+   - CENTROAVANTE: Gols, finalização, movimentação dentro da área, headers;
+
+   REGRAS GERAIS:
    - Importância dos eventos (gol que decide, defesa em momento crítico, desarme decisivo);
    - Impacto no resultado;
-   - Critérios por posição: GOLEIRO/DEFENSORES valorizam defesas e desarmes; VOLANTES/MEIAS valorizam desarmes e assistências; ATACANTES valorizam gols;
-   - Manter a meta limpa (0 gols sofridos) valoriza goleiros e defensores;
+   - Manter a meta limpa valoriza goleiros e defensores;
    - Nota-base razoável (6.0) para quem apenas cumpriu o esperado;
    - NUNCA inventar eventos, gols ou atletas que não constem nos dados.
 
 2. SELECIONAR o "11 Ideal da Rodada" (Seleção da Rodada):
-   - Escalação tática balanceada (4-3-3 ou 4-4-2), respeitando as posições reais informadas;
-   - 1 GOLEIRO, 4 defensores (ZAGUEIRO/LATERAIS), 3 meias (VOLANTE/MEIA_ATACANTE) e 3 atacantes (PONTA/CENTROAVANTE);
+   - Formação tática: 4-3-3, 4-2-3-1 ou 4-4-2 (escolha a mais equilibrada com os disponíveis);
+   - 1 GOLEIRO;
+   - 4 defensores: ZAGUEIRO + LATERAL_DIREITO + LATERAL_ESQUERDO + 1 ZAGUEIRO ou LATERAL;
+   - 3 a 4 meio-campistas: VOLANTE, MEIA_CENTRAL, MEIA_ATACANTE (quantidade varia conforme formação);
+   - 2 a 3 atacantes: PONTA_DIREITA, PONTA_ESQUERDA, SEGUNDO_ATACANTE, CENTROAVANTE;
    - Priorizar as maiores notas, garantindo pelo menos uma posição por linha do campo;
    - IMPORTANTE: se a rodada tiver MENOS de 11 atletas com ações registradas (ex: campeonato society/amador), monte uma ESCALAÇÃO PARCIAL com TODOS os atletas disponíveis, distribuídos por suas linhas — nunca inventar atletas ou posições;
    - O melhor jogador da rodada vira o "Craque da Rodada";

@@ -32,6 +32,8 @@ export default function PartidaDetalhePage() {
   const [homeScore, setHomeScore] = useState<number | null>(0);
   const [awayScore, setAwayScore] = useState<number | null>(0);
 
+  const [woType, setWoType] = useState<"home" | "away" | "double" | null>(null);
+
   const [homeScoreLeg2, setHomeScoreLeg2] = useState<number | null>(null);
   const [awayScoreLeg2, setAwayScoreLeg2] = useState<number | null>(null);
 
@@ -90,14 +92,17 @@ export default function PartidaDetalhePage() {
 
   const handleDeclareWO = (winner: "home" | "away" | "double_wo") => {
     if (winner === "home") {
-      setHomeScore(3);
+      setHomeScore(1);
       setAwayScore(0);
+      setWoType("home");
     } else if (winner === "away") {
       setHomeScore(0);
-      setAwayScore(3);
+      setAwayScore(1);
+      setWoType("away");
     } else {
       setHomeScore(0);
       setAwayScore(0);
+      setWoType("double");
     }
   };
 
@@ -114,6 +119,8 @@ export default function PartidaDetalhePage() {
         penaltiesHome: penaltiesHome !== null ? Number(penaltiesHome) : null,
         penaltiesAway: penaltiesAway !== null ? Number(penaltiesAway) : null,
         events,
+        is_wo: !!woType,
+        wo_type: woType ?? undefined,
       });
 
       router.refresh();

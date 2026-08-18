@@ -38,25 +38,30 @@ export function MatchEventsSection({
   const [eventType, setEventType] = useState<EventType>("GOAL");
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
   const [assistPlayer, setAssistPlayer] = useState<string>("");
+  const [quantity, setQuantity] = useState<number>(1);
 
   const currentTeamPlayers = selectedTeam === "home" ? homePlayers : awayPlayers;
   const currentTeamId = selectedTeam === "home" ? homeTeam.id : awayTeam.id;
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const qty = Math.max(1, Math.min(99, quantity || 1));
+
     const newEvent: MatchEventItem = {
       id: Math.random().toString(),
       team_id: currentTeamId,
       player_id: selectedPlayer || null,
       assist_player_id: eventType === "GOAL" ? (assistPlayer || null) : null,
       type: eventType,
+      quantity: qty > 1 ? qty : undefined,
     };
 
     onAddEvent(newEvent);
 
     setSelectedPlayer("");
     setAssistPlayer("");
+    setQuantity(1);
   };
 
   const renderEventIcon = (type: string) => {
@@ -171,6 +176,21 @@ export function MatchEventsSection({
             </div>
           )}
 
+          <div>
+            <label className="text-[10px] font-medium text-zinc-400 mb-1 block">
+              Quantidade (Opcional)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+              className="w-full md:h-9 h-11 px-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 outline-none focus:border-emerald-500/50"
+              placeholder="1"
+            />
+          </div>
+
           <button
             type="submit"
             className="w-full md:h-9 h-11 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 pt-0.5"
@@ -214,6 +234,9 @@ export function MatchEventsSection({
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                         <span>{getEventLabel(ev.type)}</span>
+                        {(ev.quantity ?? 1) > 1 && (
+                          <span className="text-amber-400 font-semibold">({ev.quantity}x)</span>
+                        )}
                         {ev.assist_player_id && assistPlayerObj && (
                           <span className="text-sky-400">(Passe: {assistPlayerObj.name})</span>
                         )}

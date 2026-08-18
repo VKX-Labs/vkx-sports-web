@@ -78,6 +78,7 @@ export class StatisticsService {
       if (!targetPlayer || !targetPlayerId) continue;
 
       const team = targetPlayer.teams;
+      const qty = Math.max(1, Number(item.quantity) || 1);
 
       if (!statsMap.has(targetPlayerId)) {
         statsMap.set(targetPlayerId, {
@@ -91,7 +92,7 @@ export class StatisticsService {
       }
 
       const currentStat = statsMap.get(targetPlayerId)!;
-      currentStat.count += 1;
+      currentStat.count += qty;
     }
 
     return Array.from(statsMap.values()).sort((a, b) => b.count - a.count);

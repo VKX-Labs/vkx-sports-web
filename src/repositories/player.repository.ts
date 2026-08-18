@@ -163,21 +163,34 @@ export class PlayerRepository {
 
     const { data: events, error } = await supabase
       .from("match_events")
-      .select("type, player_id, assist_player_id, goalkeeper_id, rating")
+      .select("type, player_id, assist_player_id, goalkeeper_id, rating, quantity")
       .or(`player_id.eq.${playerId},assist_player_id.eq.${playerId},goalkeeper_id.eq.${playerId}`);
 
     if (error || !events || events.length === 0) {
       return initialStats;
     }
 
-    const goals = events.filter((e) => e.type === "GOAL" && e.player_id === playerId).length;
-    const assists = events.filter(
-      (e) => e.type === "ASSIST" || e.assist_player_id === playerId
-    ).length;
-    const yellow_cards = events.filter((e) => e.type === "YELLOW_CARD" && e.player_id === playerId).length;
-    const red_cards = events.filter((e) => e.type === "RED_CARD" && e.player_id === playerId).length;
-    const saves = events.filter((e) => e.type === "SAVE" && e.player_id === playerId).length;
-    const tackles = events.filter((e) => e.type === "TACKLE" && e.player_id === playerId).length;
+    const goals = events
+      .filter((e) => e.type === "GOAL" && e.player_id === playerId)
+      .reduce((sum, e) => sum + (Number(e.quantity) || 1), 0);
+    const assists = events
+      .filter((e) => e.type === "ASSIST" || e.assist_player_id === playerId)
+      .reduce((sum, e) => {
+        if (e.assist_player_id === playerId) return sum + (Number(e.quantity) || 1);
+        return sum + (Number(e.quantity) || 1);
+      }, 0);
+    const yellow_cards = events
+      .filter((e) => e.type === "YELLOW_CARD" && e.player_id === playerId)
+      .reduce((sum, e) => sum + (Number(e.quantity) || 1), 0);
+    const red_cards = events
+      .filter((e) => e.type === "RED_CARD" && e.player_id === playerId)
+      .reduce((sum, e) => sum + (Number(e.quantity) || 1), 0);
+    const saves = events
+      .filter((e) => e.type === "SAVE" && e.player_id === playerId)
+      .reduce((sum, e) => sum + (Number(e.quantity) || 1), 0);
+    const tackles = events
+      .filter((e) => e.type === "TACKLE" && e.player_id === playerId)
+      .reduce((sum, e) => sum + (Number(e.quantity) || 1), 0);
 
     const ratedEvents = events.filter((e) => e.rating !== null && e.rating !== undefined);
     let rating = 0.0;
