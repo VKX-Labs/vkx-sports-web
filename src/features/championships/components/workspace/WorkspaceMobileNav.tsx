@@ -27,9 +27,17 @@ export default function WorkspaceMobileNav() {
             <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
               Criador
             </span>
-          ) : canEdit ? (
+          ) : myRole === "ADMIN" ? (
             <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-400">
-              {myRole === "ADMIN" ? "Co-organizador" : "Editor"}
+              Co-organizador
+            </span>
+          ) : myRole === "EDITOR" ? (
+            <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+              Editor
+            </span>
+          ) : myRole === "SQUAD_EDITOR" ? (
+            <span className="shrink-0 rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-400">
+              Editor de Elenco
             </span>
           ) : (
             <span className="shrink-0 rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">

@@ -23,7 +23,7 @@ export interface TeamOfWeek {
 }
 
 const LINE_ATT: PlayerPosition[] = ["PONTA_DIREITA", "PONTA_ESQUERDA", "SEGUNDO_ATACANTE", "CENTROAVANTE"];
-const LINE_MID: PlayerPosition[] = ["VOLANTE", "MEIA_CENTRAL", "MEIA_ATACANTE"];
+const LINE_MID: PlayerPosition[] = ["VOLANTE", "MEIA_DE_LIGACAO", "MEIA_ATACANTE"];
 const LINE_DEF: PlayerPosition[] = ["ZAGUEIRO", "LATERAL_DIREITO", "LATERAL_ESQUERDO"];
 
 function positionLabel(position: PlayerPosition | null): string {

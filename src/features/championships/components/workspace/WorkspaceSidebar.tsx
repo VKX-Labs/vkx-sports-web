@@ -33,11 +33,25 @@ export default function WorkspaceSidebar() {
                   Criador do Campeonato
                 </span>
               </span>
-            ) : canEdit ? (
+            ) : myRole === "ADMIN" ? (
               <span className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
-                  {myRole === "ADMIN" ? "Co-organizador" : "Editor"}
+                  Co-organizador
+                </span>
+              </span>
+            ) : myRole === "EDITOR" ? (
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
+                  Editor
+                </span>
+              </span>
+            ) : myRole === "SQUAD_EDITOR" ? (
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400 truncate">
+                  Editor de Elenco
                 </span>
               </span>
             ) : (

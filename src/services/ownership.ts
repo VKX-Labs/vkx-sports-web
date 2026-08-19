@@ -19,7 +19,7 @@ async function resolveChampionshipOwnerId(championshipId: string): Promise<strin
   return data.user_id as string | null;
 }
 
-async function resolveSeasonChampionshipId(seasonId: string): Promise<string | null> {
+export async function resolveSeasonChampionshipId(seasonId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("seasons")
     .select("championship_id")
@@ -49,6 +49,40 @@ async function hasEditorRole(
     .maybeSingle();
 
   return !error && Boolean(data);
+}
+
+async function hasSquadEditorRole(
+  championshipId: string,
+  userId: string
+): Promise<boolean> {
+  const ownerId = await resolveChampionshipOwnerId(championshipId);
+  if (ownerId === userId) return true;
+
+  const { data, error } = await supabase
+    .from("championship_members")
+    .select("id")
+    .eq("championship_id", championshipId)
+    .eq("user_id", userId)
+    .in("role", ["EDITOR", "ADMIN", "SQUAD_EDITOR"])
+    .maybeSingle();
+
+  return !error && Boolean(data);
+}
+
+/**
+ * Verifica se o usuário tem permissão de SQUAD_EDITOR (ou superior)
+ * para gerenciar jogadores de um campeonato.
+ * Checa ownership + papel na championship_members.
+ */
+export async function assertPlayerSquadEditor(
+  championshipId: string
+): Promise<void> {
+  const userId = await getAuthenticatedUserId();
+  const hasAccess = await hasSquadEditorRole(championshipId, userId);
+
+  if (!hasAccess) {
+    throw new OwnershipError();
+  }
 }
 
 /**
@@ -234,7 +268,21 @@ export async function assertPlayerEditor(playerId: string): Promise<void> {
     throw new Error("Jogador não encontrado.");
   }
 
-  await assertSeasonEditor(player.season_id as string);
+  const userId = await getAuthenticatedUserId();
+  const championshipId = await resolveSeasonChampionshipId(player.season_id as string);
+
+  if (!championshipId) {
+    throw new Error("Campeonato não encontrado.");
+  }
+
+  const ownerId = await resolveChampionshipOwnerId(championshipId);
+
+  if (ownerId === userId) return;
+
+  const hasAccess = await hasSquadEditorRole(championshipId, userId);
+  if (!hasAccess) {
+    throw new OwnershipError();
+  }
 }
 
 export async function assertMatchEditor(matchId: string): Promise<void> {

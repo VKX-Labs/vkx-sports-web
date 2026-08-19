@@ -92,13 +92,13 @@ export default function PartidaDetalhePage() {
 
   const handleDeclareWO = (winner: "home" | "away" | "double_wo") => {
     if (winner === "home") {
-      setHomeScore(1);
-      setAwayScore(0);
-      setWoType("home");
-    } else if (winner === "away") {
       setHomeScore(0);
       setAwayScore(1);
       setWoType("away");
+    } else if (winner === "away") {
+      setHomeScore(1);
+      setAwayScore(0);
+      setWoType("home");
     } else {
       setHomeScore(0);
       setAwayScore(0);

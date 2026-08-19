@@ -14,3 +14,21 @@ export function canEditChampionship({
   const isOwner = Boolean(userId && ownerId && userId === ownerId);
   return isOwner || myRole === "EDITOR" || myRole === "ADMIN";
 }
+
+export function canEditPlayers({
+  userId,
+  ownerId,
+  myRole,
+}: CanEditChampionshipParams): boolean {
+  const isOwner = Boolean(userId && ownerId && userId === ownerId);
+  return isOwner || myRole === "EDITOR" || myRole === "ADMIN" || myRole === "SQUAD_EDITOR";
+}
+
+export function canEditTeams({
+  userId,
+  ownerId,
+  myRole,
+}: CanEditChampionshipParams): boolean {
+  const isOwner = Boolean(userId && ownerId && userId === ownerId);
+  return isOwner || myRole === "EDITOR" || myRole === "ADMIN";
+}

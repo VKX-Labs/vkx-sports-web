@@ -1,4 +1,4 @@
-export type ChampionshipMemberRole = "FOLLOWER" | "EDITOR" | "ADMIN";
+export type ChampionshipMemberRole = "FOLLOWER" | "SQUAD_EDITOR" | "EDITOR" | "ADMIN";
 
 export interface ChampionshipMemberProfile {
   id?: string;
@@ -18,6 +18,7 @@ export interface ChampionshipMember {
 
 export const MEMBER_ROLE_LABELS: Record<ChampionshipMemberRole, string> = {
   FOLLOWER: "Seguidor",
+  SQUAD_EDITOR: "Editor de Elenco",
   EDITOR: "Editor",
   ADMIN: "Co-organizador",
 };

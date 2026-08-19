@@ -14,7 +14,7 @@ import { useWorkspace } from "@/features/championships/components/workspace/Work
 
 export default function TeamList() {
   const { id } = useParams();
-  const { canEdit } = useWorkspace();
+  const { canEditTeams } = useWorkspace();
   const { teams, loading, refresh } = useTeams(id as string);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,7 +52,7 @@ export default function TeamList() {
           </p>
         </div>
 
-        {canEdit && (
+        {canEditTeams && (
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
@@ -91,7 +91,7 @@ export default function TeamList() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             {searchTerm
               ? "Nenhum resultado corresponde à sua busca por filtros."
-              : canEdit
+              : canEditTeams
                 ? "Comece inserindo a primeira equipe da competição usando o botão superior."
                 : "Nenhuma equipe cadastrada neste campeonato."}
           </p>
@@ -104,14 +104,14 @@ export default function TeamList() {
               team={team}
               championshipId={id as string}
               onEdit={handleOpenEdit}
-              onDelete={canEdit ? handleOpenDelete : undefined}
-              canEdit={canEdit}
+              onDelete={canEditTeams ? handleOpenDelete : undefined}
+              canEdit={canEditTeams}
             />
           ))}
         </div>
       )}
 
-      {canEdit && (
+      {canEditTeams && (
         <TeamForm
           championshipId={id as string}
           isOpen={isModalOpen}
@@ -120,7 +120,7 @@ export default function TeamList() {
         />
       )}
 
-      {canEdit && (
+      {canEditTeams && (
         <EditTeamModal
           team={editingTeam}
           isOpen={isEditModalOpen}
@@ -132,7 +132,7 @@ export default function TeamList() {
         />
       )}
 
-      {canEdit && (
+      {canEditTeams && (
         <DeleteTeamModal
           team={deletingTeam}
           isOpen={isDeleteModalOpen}

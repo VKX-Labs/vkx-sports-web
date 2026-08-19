@@ -11,13 +11,15 @@ import type {
 } from "@/types/championship-member";
 import { useAuth } from "@/providers/auth-provider";
 import { useChampionshipMembers } from "@/hooks/useChampionshipMembers";
-import { canEditChampionship } from "@/utils/permissions";
+import { canEditChampionship, canEditPlayers, canEditTeams } from "@/utils/permissions";
 
 interface WorkspaceContextValue {
   championship: Championship;
   user: User | null;
   isOwner: boolean;
   canEdit: boolean;
+  canEditPlayers: boolean;
+  canEditTeams: boolean;
   myRole: ChampionshipMemberRole | null;
   members: ChampionshipMember[];
   loadingMembers: boolean;
@@ -47,6 +49,16 @@ export function WorkspaceProvider({
     ownerId: championship.user_id,
     myRole,
   });
+  const canEditPlayersFlag = canEditPlayers({
+    userId: user?.id,
+    ownerId: championship.user_id,
+    myRole,
+  });
+  const canEditTeamsFlag = canEditTeams({
+    userId: user?.id,
+    ownerId: championship.user_id,
+    myRole,
+  });
 
   return (
     <WorkspaceContext.Provider
@@ -55,6 +67,8 @@ export function WorkspaceProvider({
         user,
         isOwner,
         canEdit,
+        canEditPlayers: canEditPlayersFlag,
+        canEditTeams: canEditTeamsFlag,
         myRole,
         members,
         loadingMembers,

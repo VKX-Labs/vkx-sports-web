@@ -14,7 +14,7 @@ import { useWorkspace } from "@/features/championships/components/workspace/Work
 
 export default function JogadoresPage() {
   const { id: championshipId } = useParams<{ id: string }>();
-  const { canEdit } = useWorkspace();
+  const { canEditPlayers } = useWorkspace();
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -69,7 +69,7 @@ export default function JogadoresPage() {
           </p>
         </div>
 
-        {canEdit && (
+        {canEditPlayers && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition duration-200 cursor-pointer"
@@ -107,11 +107,11 @@ export default function JogadoresPage() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm">
             {searchTerm
               ? "Tente buscar com outro termo."
-              : canEdit
+              : canEditPlayers
                 ? "Adicione seus atletas diretamente no campeonato de forma independente ou associe-os a equipes já criadas."
                 : "Nenhum atleta cadastrado neste campeonato."}
           </p>
-          {!searchTerm && canEdit && (
+          {!searchTerm && canEditPlayers && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
@@ -125,9 +125,9 @@ export default function JogadoresPage() {
           {filteredPlayers.map((player) => (
             <div
               key={player.id}
-              onClick={() => canEdit && setSelectedPlayerForEdit(player)}
+              onClick={() => canEditPlayers && setSelectedPlayerForEdit(player)}
               className={`group bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3.5 transition-all duration-200 ${
-                canEdit
+                canEditPlayers
                   ? "cursor-pointer hover:shadow-lg hover:shadow-emerald-500/5"
                   : "cursor-default"
               }`}
@@ -170,7 +170,7 @@ export default function JogadoresPage() {
         </div>
       )}
 
-      {canEdit && (
+      {canEditPlayers && (
         <PlayerForm
           championshipId={championshipId}
           isOpen={isCreateModalOpen}
@@ -179,7 +179,7 @@ export default function JogadoresPage() {
         />
       )}
 
-      {canEdit && (
+      {canEditPlayers && (
         <EditPlayerModal
           player={selectedPlayerForEdit}
           teams={teams}

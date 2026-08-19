@@ -6,7 +6,7 @@ import {
   UpdatePlayerInput,
 } from "@/types/player";
 import {
-  assertChampionshipEditor,
+  assertPlayerSquadEditor,
   assertPlayerEditor,
 } from "@/services/ownership";
 
@@ -73,7 +73,7 @@ export class PlayerRepository {
     championshipId: string,
     player: CreatePlayerInput
   ): Promise<Player> {
-    await assertChampionshipEditor(championshipId);
+    await assertPlayerSquadEditor(championshipId);
 
     const { data: seasonData, error: seasonError } = await supabase
       .from("seasons")

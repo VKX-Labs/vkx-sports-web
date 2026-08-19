@@ -6,7 +6,7 @@ import type {
   CreatePlayerInput,
   UpdatePlayerInput,
 } from "@/types/player";
-import { getAuthenticatedUserId } from "@/services/auth.service";
+import { assertPlayerSquadEditor, resolveSeasonChampionshipId } from "@/services/ownership";
 
 export class PlayerService {
   static async listPlayers(seasonId: string): Promise<Player[]> {
@@ -25,33 +25,7 @@ export class PlayerService {
       throw new Error("O nome do jogador é obrigatório.");
     }
 
-    const userId = await getAuthenticatedUserId();
-
-    const { data: championship } = await supabase
-      .from("championships")
-      .select("user_id")
-      .eq("id", championshipId)
-      .single();
-
-    if (!championship) {
-      throw new Error("Campeonato não encontrado.");
-    }
-
-    if (championship.user_id !== userId) {
-      const { data: member } = await supabase
-        .from("championship_members")
-        .select("id")
-        .eq("championship_id", championshipId)
-        .eq("user_id", userId)
-        .in("role", ["EDITOR", "ADMIN"])
-        .maybeSingle();
-
-      if (!member) {
-        throw new Error(
-          "Você não tem permissão para adicionar jogadores neste campeonato."
-        );
-      }
-    }
+    await assertPlayerSquadEditor(championshipId);
 
     return PlayerRepository.createPlayer(championshipId, input);
   }
@@ -60,6 +34,12 @@ export class PlayerService {
     playerId: string,
     teamId: string | null
   ): Promise<Player> {
+    const player = await PlayerRepository.getPlayerById(playerId);
+    if (!player) throw new Error("Jogador não encontrado.");
+
+    const championshipId = await resolveSeasonChampionshipId(player.season_id);
+    if (championshipId) await assertPlayerSquadEditor(championshipId);
+
     return PlayerRepository.updatePlayer(playerId, {
       team_id: teamId,
     });
@@ -69,10 +49,22 @@ export class PlayerService {
     playerId: string,
     input: UpdatePlayerInput
   ): Promise<Player> {
+    const player = await PlayerRepository.getPlayerById(playerId);
+    if (!player) throw new Error("Jogador não encontrado.");
+
+    const championshipId = await resolveSeasonChampionshipId(player.season_id);
+    if (championshipId) await assertPlayerSquadEditor(championshipId);
+
     return PlayerRepository.updatePlayer(playerId, input);
   }
 
   static async removePlayer(playerId: string): Promise<void> {
+    const player = await PlayerRepository.getPlayerById(playerId);
+    if (!player) throw new Error("Jogador não encontrado.");
+
+    const championshipId = await resolveSeasonChampionshipId(player.season_id);
+    if (championshipId) await assertPlayerSquadEditor(championshipId);
+
     return PlayerRepository.deletePlayer(playerId);
   }
 

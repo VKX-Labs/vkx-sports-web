@@ -39,6 +39,20 @@ export default function ConfiguracoesPage() {
     }, member.id);
   };
 
+  const handleGiveSquadEditorAccess = async (member: ChampionshipMember) => {
+    if (
+      !confirm(
+        `Dar acesso de "Editor de Elenco" a "${member.profile?.full_name || member.profile?.email || "este usuário"}"? Ela poderá apenas criar e editar jogadores dos seus times.`
+      )
+    ) {
+      return;
+    }
+
+    await runOwnerAction(async () => {
+      await setChampionshipMemberRole(championship.id, member.user_id, "SQUAD_EDITOR");
+    }, member.id);
+  };
+
   const handleRevokeEditAccess = async (member: ChampionshipMember) => {
     if (
       !confirm(
@@ -225,7 +239,9 @@ export default function ConfiguracoesPage() {
                           ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
                           : member.role === "EDITOR"
                             ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                            : "border-slate-700 bg-slate-900 text-slate-400"
+                            : member.role === "SQUAD_EDITOR"
+                              ? "border-sky-500/30 bg-sky-500/10 text-sky-400"
+                              : "border-slate-700 bg-slate-900 text-slate-400"
                       }`}
                     >
                       {MEMBER_ROLE_LABELS[member.role]}
@@ -234,18 +250,49 @@ export default function ConfiguracoesPage() {
                     {isOwner && (
                       <div className="flex items-center gap-1.5 shrink-0">
                         {member.role === "FOLLOWER" && (
+                          <>
+                            <button
+                              onClick={() => handleGiveSquadEditorAccess(member)}
+                              disabled={busyMemberId === member.id}
+                              title="Dar acesso de Editor de Elenco"
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
+                            >
+                              {busyMemberId === member.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <UserCog className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Editor de Elenco</span>
+                            </button>
+                            <button
+                              onClick={() => handleGiveEditAccess(member)}
+                              disabled={busyMemberId === member.id}
+                              title="Dar acesso de edição total"
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
+                            >
+                              {busyMemberId === member.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <UserCog className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Editor Total</span>
+                            </button>
+                          </>
+                        )}
+
+                        {member.role === "SQUAD_EDITOR" && (
                           <button
-                            onClick={() => handleGiveEditAccess(member)}
+                            onClick={() => handleRevokeEditAccess(member)}
                             disabled={busyMemberId === member.id}
-                            title="Dar acesso de edição"
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
+                            title="Revogar acesso"
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold transition disabled:opacity-50 cursor-pointer"
                           >
                             {busyMemberId === member.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <UserCog className="w-3 h-3" />
+                              <UserX className="w-3 h-3" />
                             )}
-                            <span className="hidden sm:inline">Dar Acesso de Edição</span>
+                            <span className="hidden sm:inline">Revogar Acesso</span>
                           </button>
                         )}
 
