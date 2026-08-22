@@ -27,16 +27,18 @@ export interface RawMatchEvent {
   } | null;
 }
 
+export interface RawPlayerTeam {
+  id: string;
+  name: string;
+  badge_url: string | null;
+}
+
 export interface RawPlayerRating {
   id: string;
   name: string;
   photo_url: string | null;
   average_rating: number | string | null;
-  teams: {
-    id: string;
-    name: string;
-    badge_url: string | null;
-  } | null;
+  teams: RawPlayerTeam | RawPlayerTeam[] | null;
 }
 
 export class StatisticsRepository {

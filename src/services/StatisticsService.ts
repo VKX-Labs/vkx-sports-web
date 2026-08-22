@@ -150,13 +150,14 @@ export class StatisticsService {
     return rows
       .map((row) => {
         const rating = Number(row.average_rating ?? 0);
+        const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
 
         return {
           player_id: row.id,
           player_name: row.name || "Jogador sem nome",
           player_photo: row.photo_url || null,
-          team_name: row.teams?.name || "Sem time",
-          team_badge: row.teams?.badge_url || null,
+          team_name: team?.name || "Sem time",
+          team_badge: team?.badge_url || null,
           count: rating,
           displayValue: rating.toFixed(1),
         } satisfies PlayerStat;
