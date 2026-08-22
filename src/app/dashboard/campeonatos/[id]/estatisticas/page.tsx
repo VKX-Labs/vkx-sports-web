@@ -3,10 +3,10 @@
 import { useEffect, useState, use } from "react";
 import { LeaderboardCard } from "./components/LeaderboardCard";
 import { StatisticsService, PlayerStat } from "@/services/StatisticsService";
-import { Shield, Award, Square, Star } from "lucide-react";
+import { Shield, Award, Square, Star, Medal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-type CategoryKey = "GOAL" | "ASSIST" | "SAVE" | "YELLOW_CARD" | "RED_CARD";
+type CategoryKey = "GOAL" | "ASSIST" | "SAVE" | "YELLOW_CARD" | "RED_CARD" | "RATING";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -21,6 +21,7 @@ const CATEGORIES: CategoryConfig[] = [
   { key: "SAVE", label: "Defesas", icon: <Shield className="w-4 h-4" />, metricLabel: "Defesas" },
   { key: "YELLOW_CARD", label: "Amarelos", icon: <Square className="w-4 h-4 text-yellow-400 fill-yellow-400" />, metricLabel: "Cartões" },
   { key: "RED_CARD", label: "Vermelhos", icon: <Square className="w-4 h-4 text-red-500 fill-red-500" />, metricLabel: "Cartões" },
+  { key: "RATING", label: "Notas Médias", icon: <Medal className="w-4 h-4" />, metricLabel: "Nota" },
 ];
 
 export default function EstatisticasPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +36,7 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
     SAVE: [],
     YELLOW_CARD: [],
     RED_CARD: [],
+    RATING: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -59,12 +61,13 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
       if (!seasonId) return;
       setLoading(true);
 
-      const [goals, assists, saves, yellowCards, redCards] = await Promise.all([
-        StatisticsService.getSeasonLeaderboard(seasonId, "GOAL", 10),
-        StatisticsService.getSeasonLeaderboard(seasonId, "ASSIST", 10),
-        StatisticsService.getSeasonLeaderboard(seasonId, "SAVE", 10),
-        StatisticsService.getSeasonLeaderboard(seasonId, "YELLOW_CARD", 10),
-        StatisticsService.getSeasonLeaderboard(seasonId, "RED_CARD", 10),
+      const [goals, assists, saves, yellowCards, redCards, ratings] = await Promise.all([
+        StatisticsService.getSeasonLeaderboard(seasonId, "GOAL"),
+        StatisticsService.getSeasonLeaderboard(seasonId, "ASSIST"),
+        StatisticsService.getSeasonLeaderboard(seasonId, "SAVE"),
+        StatisticsService.getSeasonLeaderboard(seasonId, "YELLOW_CARD"),
+        StatisticsService.getSeasonLeaderboard(seasonId, "RED_CARD"),
+        StatisticsService.getSeasonRatingsLeaderboard(seasonId),
       ]);
 
       setStatsData({
@@ -73,6 +76,7 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
         SAVE: saves,
         YELLOW_CARD: yellowCards,
         RED_CARD: redCards,
+        RATING: ratings,
       });
       setLoading(false);
     }

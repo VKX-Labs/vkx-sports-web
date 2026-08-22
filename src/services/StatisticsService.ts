@@ -7,6 +7,7 @@ export interface PlayerStat {
   team_name: string;
   team_badge: string | null;
   count: number;
+  displayValue?: string;
 }
 
 export class StatisticsService {
@@ -100,8 +101,7 @@ export class StatisticsService {
 
   static async getSeasonLeaderboard(
     seasonId: string,
-    eventType?: string,
-    limit = 10
+    eventType?: string
   ): Promise<PlayerStat[] | any> {
     if (eventType) {
       const { dbType, metricKey } = this.normalizeEventType(eventType);
@@ -119,11 +119,10 @@ export class StatisticsService {
 
       const viewResult = this.mapFromView(rawData, metricKey);
       if (viewResult.length > 0) {
-        return viewResult.slice(0, limit);
+        return viewResult;
       }
 
-      const eventsResult = this.processEvents(rawData, isAssist);
-      return eventsResult.slice(0, limit);
+      return this.processEvents(rawData, isAssist);
     }
 
     const [goals, assists, yellowCards, redCards, saves, tackles] = await Promise.all([
@@ -136,12 +135,33 @@ export class StatisticsService {
     ]);
 
     return {
-      topScorers: this.processEvents(goals).slice(0, limit),
-      topAssists: this.processEvents(assists, true).slice(0, limit),
-      topYellowCards: this.processEvents(yellowCards).slice(0, limit),
-      topRedCards: this.processEvents(redCards).slice(0, limit),
-      topSaves: this.processEvents(saves).slice(0, limit),
-      topTackles: this.processEvents(tackles).slice(0, limit),
+      topScorers: this.processEvents(goals),
+      topAssists: this.processEvents(assists, true),
+      topYellowCards: this.processEvents(yellowCards),
+      topRedCards: this.processEvents(redCards),
+      topSaves: this.processEvents(saves),
+      topTackles: this.processEvents(tackles),
     };
+  }
+
+  static async getSeasonRatingsLeaderboard(seasonId: string): Promise<PlayerStat[]> {
+    const rows = await StatisticsRepository.getPlayersByAverageRating(seasonId);
+
+    return rows
+      .map((row) => {
+        const rating = Number(row.average_rating ?? 0);
+
+        return {
+          player_id: row.id,
+          player_name: row.name || "Jogador sem nome",
+          player_photo: row.photo_url || null,
+          team_name: row.teams?.name || "Sem time",
+          team_badge: row.teams?.badge_url || null,
+          count: rating,
+          displayValue: rating.toFixed(1),
+        } satisfies PlayerStat;
+      })
+      .filter((player) => player.count > 0)
+      .sort((a, b) => b.count - a.count);
   }
 }

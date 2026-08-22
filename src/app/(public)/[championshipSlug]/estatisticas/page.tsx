@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Star, Hand, Square, Loader2 } from "lucide-react";
+import { Award, Star, Hand, Square, Medal, Loader2 } from "lucide-react";
 import { StatisticsService, PlayerStat } from "@/services/StatisticsService";
 import { LeaderboardCard } from "@/app/dashboard/campeonatos/[id]/estatisticas/components/LeaderboardCard";
 import { usePublicChampionshipContext } from "@/app/(public)/[championshipSlug]/championship-context";
 
-type CategoryKey = "GOAL" | "ASSIST" | "SAVE" | "YELLOW_CARD" | "RED_CARD";
+type CategoryKey = "GOAL" | "ASSIST" | "SAVE" | "YELLOW_CARD" | "RED_CARD" | "RATING";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -21,6 +21,7 @@ const CATEGORIES: CategoryConfig[] = [
   { key: "SAVE", label: "Defesas", icon: <Hand className="w-4 h-4" />, metricLabel: "Defesas" },
   { key: "YELLOW_CARD", label: "Amarelos", icon: <Square className="w-4 h-4 text-yellow-400 fill-yellow-400" />, metricLabel: "Cartões" },
   { key: "RED_CARD", label: "Vermelhos", icon: <Square className="w-4 h-4 text-red-500 fill-red-500" />, metricLabel: "Cartões" },
+  { key: "RATING", label: "Notas Médias", icon: <Medal className="w-4 h-4" />, metricLabel: "Nota" },
 ];
 
 export default function PublicChampionshipStatsPage() {
@@ -33,6 +34,7 @@ export default function PublicChampionshipStatsPage() {
     SAVE: [],
     YELLOW_CARD: [],
     RED_CARD: [],
+    RATING: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -46,12 +48,13 @@ export default function PublicChampionshipStatsPage() {
       }
 
       try {
-        const [goals, assists, saves, yellowCards, redCards] = await Promise.all([
-          StatisticsService.getSeasonLeaderboard(seasonId, "GOAL", 10),
-          StatisticsService.getSeasonLeaderboard(seasonId, "ASSIST", 10),
-          StatisticsService.getSeasonLeaderboard(seasonId, "SAVE", 10),
-          StatisticsService.getSeasonLeaderboard(seasonId, "YELLOW_CARD", 10),
-          StatisticsService.getSeasonLeaderboard(seasonId, "RED_CARD", 10),
+        const [goals, assists, saves, yellowCards, redCards, ratings] = await Promise.all([
+          StatisticsService.getSeasonLeaderboard(seasonId, "GOAL"),
+          StatisticsService.getSeasonLeaderboard(seasonId, "ASSIST"),
+          StatisticsService.getSeasonLeaderboard(seasonId, "SAVE"),
+          StatisticsService.getSeasonLeaderboard(seasonId, "YELLOW_CARD"),
+          StatisticsService.getSeasonLeaderboard(seasonId, "RED_CARD"),
+          StatisticsService.getSeasonRatingsLeaderboard(seasonId),
         ]);
 
         if (active) {
@@ -61,11 +64,20 @@ export default function PublicChampionshipStatsPage() {
             SAVE: saves,
             YELLOW_CARD: yellowCards,
             RED_CARD: redCards,
+            RATING: ratings,
           });
         }
       } catch (err) {
         console.error("Erro ao carregar estatísticas públicas:", err);
-        if (active) setStatsData({ GOAL: [], ASSIST: [], SAVE: [], YELLOW_CARD: [], RED_CARD: [] });
+        if (active)
+          setStatsData({
+            GOAL: [],
+            ASSIST: [],
+            SAVE: [],
+            YELLOW_CARD: [],
+            RED_CARD: [],
+            RATING: [],
+          });
       } finally {
         if (active) setLoading(false);
       }

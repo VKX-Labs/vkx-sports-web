@@ -94,7 +94,7 @@ export function LeaderboardCard({
 
                 <div className="flex items-center gap-1 pl-2 flex-shrink-0">
                   <span className="font-black text-base text-emerald-400">
-                    {player.count ?? 0}
+                    {player.displayValue ?? player.count ?? 0}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500">
                     {metricLabel}

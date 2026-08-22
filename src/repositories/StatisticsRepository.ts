@@ -27,7 +27,55 @@ export interface RawMatchEvent {
   } | null;
 }
 
+export interface RawPlayerRating {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  average_rating: number | string | null;
+  teams: {
+    id: string;
+    name: string;
+    badge_url: string | null;
+  } | null;
+}
+
 export class StatisticsRepository {
+  static async getPlayersByAverageRating(seasonId: string): Promise<RawPlayerRating[]> {
+    try {
+      const { data, error } = await supabase
+        .from("players")
+        .select(
+          `
+          id,
+          name,
+          photo_url,
+          average_rating,
+          teams:team_id (
+            id,
+            name,
+            badge_url
+          )
+        `
+        )
+        .eq("season_id", seasonId)
+        .gt("average_rating", 0)
+        .order("average_rating", { ascending: false });
+
+      if (error) {
+        console.error(
+          "[StatisticsRepository] Erro ao buscar notas médias:",
+          error.message
+        );
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error("[StatisticsRepository] Erro inesperado ao buscar notas médias:", err);
+      return [];
+    }
+  }
+
   static async getMatchEventsBySeason(
     seasonId: string,
     eventType: string
