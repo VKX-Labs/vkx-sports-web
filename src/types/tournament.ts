@@ -166,6 +166,7 @@ export interface TeamStanding {
   goals_against: number;
   goal_difference: number;
   points: number;
+  points_deducted: number;
   percentage: number;
 }
 

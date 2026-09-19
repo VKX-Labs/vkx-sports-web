@@ -49,7 +49,7 @@ export function useClassificacao(championshipId: string) {
       let teams: any[] = [];
       const { data: seasonTeams } = await supabase
         .from("teams")
-        .select("id, name, badge_url")
+        .select("id, name, badge_url, points_deducted")
         .eq("season_id", seasonId);
 
       if (seasonTeams && seasonTeams.length > 0) {
@@ -57,7 +57,7 @@ export function useClassificacao(championshipId: string) {
       } else {
         const { data: champTeams } = await supabase
           .from("teams")
-          .select("id, name, badge_url")
+          .select("id, name, badge_url, points_deducted")
           .eq("championship_id", championshipId);
         teams = champTeams || [];
       }

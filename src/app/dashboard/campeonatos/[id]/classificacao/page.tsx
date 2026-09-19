@@ -12,11 +12,12 @@ import { Table, Trophy, Loader2, Settings2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { assertChampionshipEditor } from "@/services/ownership";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
+import { StandingsAdminMenu } from "@/components/tournament/StandingsAdminMenu";
 
 export default function ClassificacaoPage() {
   const params = useParams();
   const championshipId = params?.id as string;
-  const { canEdit } = useWorkspace();
+  const { canEdit, canManagePunishments } = useWorkspace();
 
   const {
     activeTab,
@@ -148,31 +149,40 @@ export default function ClassificacaoPage() {
           )}
         </div>
 
-        {canEdit && (
-          <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 border border-zinc-800 rounded-xl self-start sm:self-auto">
-            <Settings2 className="w-3.5 h-3.5 text-zinc-400" />
-            <select
-              value={normalizedTournamentType}
-              onChange={(e) =>
-                handleTournamentTypeChange(e.target.value as TournamentType)
-              }
-              className="bg-transparent text-xs text-zinc-300 font-medium focus:outline-none cursor-pointer"
-            >
-              <option value="PONTOS_CORRIDOS" className="bg-zinc-900 text-zinc-200">
-                Pontos Corridos
-              </option>
-              <option value="GRUPOS_MATA_MATA" className="bg-zinc-900 text-zinc-200">
-                Fase de Grupos
-              </option>
-              <option value="COPA" className="bg-zinc-900 text-zinc-200">
-                Formato Copa
-              </option>
-              <option value="MATA_MATA" className="bg-zinc-900 text-zinc-200">
-                Apenas Mata-Mata
-              </option>
-            </select>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {canManagePunishments && (
+            <StandingsAdminMenu
+              championshipId={championshipId}
+              standings={standings}
+              onSaved={loadTournamentData}
+            />
+          )}
+          {canEdit && (
+            <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 border border-zinc-800 rounded-xl self-start sm:self-auto">
+              <Settings2 className="w-3.5 h-3.5 text-zinc-400" />
+              <select
+                value={normalizedTournamentType}
+                onChange={(e) =>
+                  handleTournamentTypeChange(e.target.value as TournamentType)
+                }
+                className="bg-transparent text-xs text-zinc-300 font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="PONTOS_CORRIDOS" className="bg-zinc-900 text-zinc-200">
+                  Pontos Corridos
+                </option>
+                <option value="GRUPOS_MATA_MATA" className="bg-zinc-900 text-zinc-200">
+                  Fase de Grupos
+                </option>
+                <option value="COPA" className="bg-zinc-900 text-zinc-200">
+                  Formato Copa
+                </option>
+                <option value="MATA_MATA" className="bg-zinc-900 text-zinc-200">
+                  Apenas Mata-Mata
+                </option>
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
       {effectiveTab === "table" ? (

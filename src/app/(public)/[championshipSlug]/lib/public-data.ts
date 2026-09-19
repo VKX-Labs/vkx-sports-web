@@ -96,7 +96,7 @@ export async function fetchPublicStandings(
 
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, name, badge_url")
+    .select("id, name, badge_url, points_deducted")
     .eq("season_id", seasonId);
 
   if (teamsError) throw teamsError;

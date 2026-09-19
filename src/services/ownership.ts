@@ -51,6 +51,21 @@ async function hasEditorRole(
   return !error && Boolean(data);
 }
 
+async function hasAdminRole(
+  championshipId: string,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("championship_members")
+    .select("id")
+    .eq("championship_id", championshipId)
+    .eq("user_id", userId)
+    .eq("role", "ADMIN")
+    .maybeSingle();
+
+  return !error && Boolean(data);
+}
+
 async function hasSquadEditorRole(
   championshipId: string,
   userId: string
@@ -196,6 +211,50 @@ export async function assertRoundOwner(roundId: string): Promise<void> {
   if (ownerId !== userId) {
     throw new OwnershipError();
   }
+}
+
+// =============================================================
+// VARIAÇÕES "ADMIN": permitem mutações apenas para o dono do
+// campeonato ou membros com papel ADMIN (Co-organizador). O
+// papel EDITOR NÃO passa nesta verificação.
+// =============================================================
+
+export async function assertChampionshipAdmin(
+  championshipId: string
+): Promise<void> {
+  const userId = await getAuthenticatedUserId();
+  const ownerId = await resolveChampionshipOwnerId(championshipId);
+
+  if (!ownerId) {
+    throw new Error("Campeonato não encontrado.");
+  }
+
+  if (ownerId === userId) return;
+
+  const isAdmin = await hasAdminRole(championshipId, userId);
+  if (!isAdmin) {
+    throw new OwnershipError();
+  }
+}
+
+export async function assertTeamAdmin(teamId: string): Promise<void> {
+  const { data: team, error } = await supabase
+    .from("teams")
+    .select("season_id")
+    .eq("id", teamId)
+    .maybeSingle();
+
+  if (error || !team?.season_id) {
+    throw new Error("Equipe não encontrada.");
+  }
+
+  const championshipId = await resolveSeasonChampionshipId(team.season_id as string);
+
+  if (!championshipId) {
+    throw new Error("Campeonato não encontrado.");
+  }
+
+  await assertChampionshipAdmin(championshipId);
 }
 
 // =============================================================

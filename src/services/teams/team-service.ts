@@ -3,11 +3,13 @@ import {
   findSeasonByChampionshipId,
   insertTeam,
   updateTeamById,
+  updateTeamPointsDeducted,
   deleteTeam as removeTeamFromRepository,
 } from "@/repositories";
 import type { Team, CreateTeamPayload, UpdateTeamPayload } from "@/types/team";
 import {
   assertChampionshipEditor,
+  assertTeamAdmin,
   assertTeamEditor,
 } from "@/services/ownership";
 
@@ -55,4 +57,17 @@ export async function updateTeam(
 export async function deleteTeam(teamId: string): Promise<void> {
   await assertTeamEditor(teamId);
   await removeTeamFromRepository(teamId);
+}
+
+export async function setTeamPointsDeducted(
+  teamId: string,
+  pointsDeducted: number
+): Promise<Team> {
+  if (!Number.isFinite(pointsDeducted) || pointsDeducted < 0) {
+    throw new Error("O valor da dedução deve ser maior ou igual a zero.");
+  }
+
+  await assertTeamAdmin(teamId);
+
+  return updateTeamPointsDeducted(teamId, pointsDeducted);
 }

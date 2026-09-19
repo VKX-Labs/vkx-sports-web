@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Team, CreateTeamPayload, UpdateTeamPayload } from "@/types/team";
-import { assertSeasonEditor, assertTeamEditor } from "@/services/ownership";
+import { assertTeamAdmin, assertSeasonEditor, assertTeamEditor } from "@/services/ownership";
 
 export async function findTeamsByChampionshipId(
   championshipId: string
@@ -58,6 +58,25 @@ export async function updateTeamById(
   const { data, error } = await supabase
     .from("teams")
     .update(teamData)
+    .eq("id", teamId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Team;
+}
+
+export async function updateTeamPointsDeducted(
+  teamId: string,
+  pointsDeducted: number
+): Promise<Team> {
+  await assertTeamAdmin(teamId);
+
+  const value = Math.max(0, Math.floor(pointsDeducted || 0));
+
+  const { data, error } = await supabase
+    .from("teams")
+    .update({ points_deducted: value })
     .eq("id", teamId)
     .select()
     .single();

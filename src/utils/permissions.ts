@@ -32,3 +32,12 @@ export function canEditTeams({
   const isOwner = Boolean(userId && ownerId && userId === ownerId);
   return isOwner || myRole === "EDITOR" || myRole === "ADMIN";
 }
+
+export function canManagePunishments({
+  userId,
+  ownerId,
+  myRole,
+}: CanEditChampionshipParams): boolean {
+  const isOwner = Boolean(userId && ownerId && userId === ownerId);
+  return isOwner || myRole === "ADMIN";
+}

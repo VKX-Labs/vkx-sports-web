@@ -3,7 +3,7 @@ import type { TeamStanding } from "@/types/tournament";
 
 export const RoundRobinService = {
   calculateStandings(
-    teams: { id: string; name: string; badge_url?: string; group_name?: string | null }[],
+    teams: { id: string; name: string; badge_url?: string; group_name?: string | null; points_deducted?: number | null }[],
     matches: Pick<Match, "status" | "home_team_id" | "away_team_id" | "home_score" | "away_score" | "is_wo" | "wo_type">[]
   ): TeamStanding[] {
     const map = new Map<string, TeamStanding>();
@@ -23,6 +23,7 @@ export const RoundRobinService = {
         goals_against: 0,
         goal_difference: 0,
         points: 0,
+        points_deducted: t.points_deducted ?? 0,
         percentage: 0,
       });
     });
@@ -103,9 +104,16 @@ export const RoundRobinService = {
 
     const standingsList = Array.from(map.values()).map((s) => {
       s.goal_difference = s.goals_for - s.goals_against;
+
+      // ── Dedução de pontos (punição/STJD) ────────────────
+      const earnedPoints = s.points;
+      s.points = earnedPoints - s.points_deducted;
+
       const maxPossiblePoints = s.played * 3;
       s.percentage =
-        maxPossiblePoints > 0 ? Math.round((s.points / maxPossiblePoints) * 100) : 0;
+        maxPossiblePoints > 0
+          ? Math.max(0, Math.round((s.points / maxPossiblePoints) * 100))
+          : 0;
       return s;
     });
 

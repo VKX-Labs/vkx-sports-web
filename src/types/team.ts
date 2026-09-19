@@ -6,6 +6,7 @@ export interface Team {
   city: string | null;
   manager: string | null;
   badge_url: string | null;
+  points_deducted?: number | null;
   created_at: string;
 
   _count?: {
@@ -28,4 +29,5 @@ export type UpdateTeamPayload = {
   city?: string | null;
   manager?: string | null;
   badge_url?: string | null;
+  points_deducted?: number | null;
 };

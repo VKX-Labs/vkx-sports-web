@@ -218,7 +218,17 @@ function StandingsTableContent({
                 </td>
 
                 <td className={`${cell} text-center font-black text-emerald-400 font-mono bg-emerald-500/5`}>
-                  {team.points}
+                  <span className="relative inline-flex items-center gap-1">
+                    {team.points}
+                    {team.points_deducted > 0 && (
+                      <span
+                        className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-red-500 text-[8px] font-bold text-white"
+                        title={`Punição: ${team.points_deducted} pontos deduzidos`}
+                      >
+                        -{team.points_deducted}
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className={`${cell} text-center font-mono text-zinc-300`}>{team.played}</td>
                 <td className={`${cell} text-center font-mono text-zinc-400`}>{team.wins}</td>
