@@ -13,7 +13,8 @@ export interface RatingAuditPayload {
   match_ids: string[];
   players: RatingAuditPlayer[];
   error?: string;
-  groq_mode?: "json" | "text";
+  mode?: "NATIVE_ENGINE";
+  groq_mode?: "json" | "text" | "NATIVE_ENGINE";
   ratings_count?: number;
   matches_count?: number;
 }

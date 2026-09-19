@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Settings, Gavel } from "lucide-react";
+import { Settings, Gavel, Star, Flag } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { TeamStanding } from "@/types/tournament";
 import { PointsDeductionModal } from "@/components/tournament/PointsDeductionModal";
+import {
+  RatingActionsModal,
+  type RatingActionMode,
+} from "@/components/tournament/rating/RatingActionsModal";
 
 interface AdminToolDefinition {
   key: string;
@@ -23,12 +27,38 @@ interface StandingsAdminMenuProps {
   championshipId: string;
   standings: TeamStanding[];
   onSaved: () => void;
+  canManageRatings?: boolean;
+}
+
+function makeRatingTool(
+  key: string,
+  label: string,
+  description: string,
+  icon: LucideIcon,
+  mode: RatingActionMode
+): AdminToolDefinition {
+  return {
+    key,
+    label,
+    description,
+    icon,
+    renderModal: ({ championshipId: cid, onSaved: saved, onClose }) => (
+      <RatingActionsModal
+        isOpen
+        onClose={onClose}
+        championshipId={cid}
+        mode={mode}
+        onSaved={saved}
+      />
+    ),
+  };
 }
 
 export function StandingsAdminMenu({
   championshipId,
   standings,
   onSaved,
+  canManageRatings = false,
 }: StandingsAdminMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<AdminToolDefinition | null>(null);
@@ -50,6 +80,31 @@ export function StandingsAdminMenu({
         />
       ),
     },
+    ...(canManageRatings
+      ? [
+          makeRatingTool(
+            "rating-round",
+            "Calcular Nota Média da Rodada",
+            "Notas pendentes da rodada",
+            Star,
+            "ROUND"
+          ),
+          makeRatingTool(
+            "rating-match",
+            "Calcular Nota por Partida",
+            "Recalculo explícito de um jogo",
+            Star,
+            "MATCH"
+          ),
+          makeRatingTool(
+            "rating-finalize",
+            "Finalizar Rodada Atual",
+            "Avançar rodada ativa (não recalcula notas)",
+            Flag,
+            "FINALIZE"
+          ),
+        ]
+      : []),
   ];
 
   useEffect(() => {

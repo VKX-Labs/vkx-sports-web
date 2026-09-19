@@ -17,7 +17,7 @@ import { StandingsAdminMenu } from "@/components/tournament/StandingsAdminMenu";
 export default function ClassificacaoPage() {
   const params = useParams();
   const championshipId = params?.id as string;
-  const { canEdit, canManagePunishments } = useWorkspace();
+  const { canEdit, canManagePunishments, canManageRatings } = useWorkspace();
 
   const {
     activeTab,
@@ -150,11 +150,12 @@ export default function ClassificacaoPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {canManagePunishments && (
+          {(canManagePunishments || canManageRatings) && (
             <StandingsAdminMenu
               championshipId={championshipId}
               standings={standings}
               onSaved={loadTournamentData}
+              canManageRatings={canManageRatings}
             />
           )}
           {canEdit && (

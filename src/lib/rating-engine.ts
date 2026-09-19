@@ -1,6 +1,4 @@
-import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { groqChatCompletion } from "@/lib/groq";
 import { PLAYER_POSITIONS } from "@/types/player";
 import type { PlayerPosition } from "@/types/player";
 
@@ -65,44 +63,8 @@ export interface RatingMatchInput {
 export type RatingAuditStatus = "SUCCESS" | "WARNING" | "ERROR";
 
 // ------------------------------------------------------------------
-// Schema da resposta da IA — validado em runtime.
+// Normalização de posições
 // ------------------------------------------------------------------
-const aiRatingSchema = z.object({
-  player_id: z.string().min(1),
-  rating: z.number().min(0).max(10),
-  justification: z.string().optional(),
-});
-
-const teamOfTheWeekSchema = z.object({
-  formation: z.string().optional(),
-  lineup: z
-    .array(
-      z.object({ player_id: z.string().min(1), position: z.string().optional() })
-    )
-    .optional()
-    .default([]),
-  bench: z
-    .array(
-      z.object({ player_id: z.string().min(1), position: z.string().optional() })
-    )
-    .optional()
-    .default([]),
-  star_player: z.object({ player_id: z.string().min(1) }).optional(),
-  highlights: z.string().optional().default(""),
-});
-
-const aiResponseSchema = z.object({
-  ratings: z.array(aiRatingSchema),
-  team_of_the_week: teamOfTheWeekSchema.optional().default({
-    formation: undefined,
-    lineup: [],
-    bench: [],
-    star_player: undefined,
-    highlights: "",
-  }),
-});
-
-// Linhas do campo.
 const POSITION_LINES: Record<string, PlayerPosition[]> = {
   GK: ["GOLEIRO"],
   DEF: ["ZAGUEIRO", "LATERAL_DIREITO", "LATERAL_ESQUERDO"],
@@ -164,12 +126,12 @@ export function normalizePositionInput(value?: string | null): PlayerPosition | 
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z]/g, "");
+    .replace(/[^A-Z_]/g, "");
   return POSITION_ALIASES[key] ?? null;
 }
 
 // ------------------------------------------------------------------
-// Montagem do input estruturado + prompt para a IA
+// Montagem do input estruturado (apenas dados, sem IA)
 // ------------------------------------------------------------------
 export function dedupeMatches(matches: RatingMatchInput[]): RatingMatchInput[] {
   const seen = new Set<string>();
@@ -354,142 +316,173 @@ export async function hydrateMatchRosters(
     };
   });
 }
-export function buildRoundInput(matches: RatingMatchInput[]): string {
-  return matches
-    .map((m, idx) => {
-      const homeTeam = m.home_team?.name || `Mandante ${idx + 1}`;
-      const awayTeam = m.away_team?.name || `Visitante ${idx + 1}`;
-      const events = (m.events || [])
-        .map((e) => {
-          const qty = Number(e.quantity) || 1;
-          const qtyLabel = qty > 1 ? ` (x${qty})` : "";
-          const playerName = e.player_name || (e.player as { name?: string } | null)?.name || "Jogador";
-          const teamName = e.team_name || (e.team as { name?: string } | null)?.name || homeTeam;
-          return `- [${e.type}] ${playerName} (${teamName})${qtyLabel}${e.minute ? ` aos ${e.minute}min` : ""}`;
-        })
-        .join("\n");
-      const squads = (m.squads || [])
-        .map(
-          (s) =>
-            `- ${s.name || s.player_id} | ${s.position || "SEM_POSICAO"} | ${s.team_name || homeTeam}`
-        )
-        .join("\n");
 
-      return `
-📌 Jogo ${idx + 1}: ${homeTeam} ${m.home_score ?? 0} x ${m.away_score ?? 0} ${awayTeam}
-ELENCOS (TODOS OS JOGADORES DOS DOIS TIMES):
-${squads || "- (time sem jogadores cadastrados)"}
-EVENTOS:
-${events || "- (sem eventos)"}
-`;
-    })
-    .join("\n---\n");
+// ------------------------------------------------------------------
+// MOTOR 100% DETERMINÍSTICO (SISTEMA NATIVO)
+//
+// Cálculo de nota por atleta sem qualquer chamada externa (IA/Groq).
+// Regras de negócio fixas:
+//   - Nota base: 6.0
+//   - Resultado: Vitória +0.5 | Empate +0.0 | Derrota -0.3
+//   - Gol: +0.8 (Meia/Atacante) / +1.2 (Defensor/Goleiro)
+//   - Assistência: +0.5
+//   - Cartão amarelo: -0.5 (por cartão)
+//   - Cartão vermelho: nota final travada em 2.0
+//   - Gol contra: -1.2
+//   - Defesa de pênalti (Goleiro): +1.5
+//   - Clamp final: 1.0 a 10.0, uma casa decimal.
+// ------------------------------------------------------------------
+const BASE_RATING = 6.0;
+const WIN_BONUS = 0.5;
+const DRAW_BONUS = 0.0;
+const LOSS_PENALTY = -0.3;
+const GOAL_BONUS_OFFENSIVE = 0.8;
+const GOAL_BONUS_DEFENSIVE = 1.2;
+const ASSIST_BONUS = 0.5;
+const YELLOW_CARD_PENALTY = -0.5;
+const RED_CARD_FINAL_RATING = 2.0;
+const OWN_GOAL_PENALTY = -1.2;
+const PENALTY_SAVE_BONUS = 1.5;
+const MIN_RATING = 1.0;
+const MAX_RATING = 10.0;
+
+// Normaliza variações comuns de tipo de evento (inclui gol contra, que não
+// possui tipo próprio na tabela match_events) para o formato canônico.
+const EVENT_TYPE_ALIASES: Record<string, string> = {
+  GOAL: "GOAL",
+  GOL: "GOAL",
+  GOLS: "GOAL",
+  PENALTY: "PENALTY",
+  PENALTI: "PENALTY",
+  PENALTY_GOAL: "PENALTY",
+  ASSIST: "ASSIST",
+  ASSISTENCIA: "ASSIST",
+  YELLOW_CARD: "YELLOW_CARD",
+  YELLOW: "YELLOW_CARD",
+  AMARELO: "YELLOW_CARD",
+  CARTAO_AMARELO: "YELLOW_CARD",
+  RED_CARD: "RED_CARD",
+  RED: "RED_CARD",
+  VERMELHO: "RED_CARD",
+  CARTAO_VERMELHO: "RED_CARD",
+  SAVE: "SAVE",
+  DEFESA: "SAVE",
+  PENALTY_SAVE: "SAVE",
+  OWN_GOAL: "OWN_GOAL",
+  GOL_CONTRA: "OWN_GOAL",
+  AUTO_GOAL: "OWN_GOAL",
+  OG: "OWN_GOAL",
+  TACKLE: "TACKLE",
+  DESARME: "TACKLE",
+};
+
+export function normalizeEventType(value: string): string {
+  if (!value) return "";
+  const key = value
+    .toUpperCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z_]/g, "");
+  return EVENT_TYPE_ALIASES[key] ?? value.toUpperCase().trim();
 }
 
-function buildPrompt(
-  championshipName: string | undefined,
-  roundName: string,
-  roundInput: string
-): string {
-  return `
-Você é um analista técnico de futebol especialista em avaliação de desempenho.
-Campeonato: "${championshipName || "desconhecido"}".
-Você recebe os dados OFICIAIS de uma rodada (placares, eventos e os ELENCOS
-COMPLETOS dos dois times de cada partida).
+// Posição defensiva: Goleiro + defensores recebem o bônus maior de gol.
+function isDefensivePosition(position: PlayerPosition | null): boolean {
+  return (
+    position === "GOLEIRO" ||
+    position === "ZAGUEIRO" ||
+    position === "LATERAL_DIREITO" ||
+    position === "LATERAL_ESQUERDO"
+  );
+}
 
-DADOS OFICIAIS DA RODADA (${roundName}):
-${roundInput}
+function clampRating(value: number): number {
+  return Math.min(MAX_RATING, Math.max(MIN_RATING, Math.round(value * 10) / 10));
+}
 
-TAREFAS:
-1. ATRIBUIR A NOTA DE PARTIDA (entre 1.0 e 10.0, UMA casa decimal) para CADA
-   atleta listado nos ELENCOS dos dois times de CADA partida (todos os atletas
-   da lista "ELENCOS..."), seguindo RIGOROSAMENTE o motor de cálculo abaixo
-   (estilo Sofascore), na ordem em que as etapas aparecem.
+// Nota determinística nativa de UM atleta da partida. Não depende de rede,
+// IA ou serviços externos: é pura função dos dados (resultado + eventos).
+export function computeNativeRating(
+  squad: RatingSquadPlayer,
+  match: RatingMatchInput,
+  events: Array<Record<string, unknown>>
+): number {
+  let rating = BASE_RATING;
 
-   MOTOR DE CÁLCULO:
+  const homeScore = Number(match.home_score) || 0;
+  const awayScore = Number(match.away_score) || 0;
+  const isHome = Boolean(squad.team_id && squad.team_id === match.home_team_id);
+  const teamScore = isHome ? homeScore : awayScore;
+  const oppScore = isHome ? awayScore : homeScore;
 
-   A) NOTA BASE: todo atleta do elenco começa com 6.0.
+  if (teamScore > oppScore) rating += WIN_BONUS;
+  else if (teamScore === oppScore) rating += DRAW_BONUS;
+  else rating += LOSS_PENALTY;
 
-   B) AJUSTE PELO RESULTADO DO JOGO da equipe do atleta:
-      - Vitória: +0.5
-      - Empate: 0.0
-      - Derrota: -0.3
+  const position = normalizePositionInput(squad.position);
+  const isGk = position === "GOLEIRO";
+  const goalBonus = isDefensivePosition(position) ? GOAL_BONUS_DEFENSIVE : GOAL_BONUS_OFFENSIVE;
 
-   C) AJUSTE POR POSIÇÃO (use o campo posição de cada atleta do elenco):
+  const playerId = squad.player_id || "";
+  let redCard = false;
 
-      GOLEIRO:
-        - 1 defesa registrada (evento SAVE): +0.3
-        - 1 gol sofrido: -0.4
-        - Clean sheet (vitória OU empate sem sofrer gols): +1.0
+  for (const e of events) {
+    const eventPlayerId = e.player_id ? String(e.player_id) : "";
+    const assistPlayerId = e.assist_player_id ? String(e.assist_player_id) : "";
+    const type = normalizeEventType(String(e.type || ""));
+    const qty = Math.max(1, Number(e.quantity) || 1);
+    const isForPlayer = eventPlayerId === playerId;
+    const isAssister = type === "ASSIST"
+      ? isForPlayer
+      : assistPlayerId === playerId && (type === "GOAL" || type === "PENALTY");
 
-      DEFENSORES (ZAGUEIRO, LATERAL_DIREITO, LATERAL_ESQUERDO, VOLANTE):
-        - 1 desarme (evento TACKLE): +0.2
-        - 1 gol marcado: +1.0
-        - 1 assistência (evento ASSIST): +0.7
-        - Clean sheet (equipe não sofreu gols no jogo): +0.5
+    if (!isForPlayer && !isAssister) continue;
 
-      MEIAS E ATACANTES (MEIA_DE_LIGACAO, MEIA_ATACANTE, PONTA_DIREITA,
-      PONTA_ESQUERDA, SEGUNDO_ATACANTE, CENTROAVANTE):
-        - 1 gol marcado: +1.0
-        - 1 assistência (evento ASSIST): +0.6
-        - 1 desarme (evento TACKLE): +0.1
-
-      JOGADORES SEM POSIÇÃO DEFINIDA (posição NULL ou não mapeada acima):
-        - Usar apenas: 6.0 (base) + resultado do jogo + gol (+1.0) +
-          assistência (+0.6) + desarmes (+0.1) - cartões (etapa D).
-
-   D) REGRAS DISCIPLINARES (aplicar em TODOS os casos):
-      - 1 cartão amarelo (evento YELLOW_CARD): -0.5 por cartão.
-      - Cartão vermelho (evento RED_CARD, direto ou por 2º amarelo):
-        define a NOTA FINAL da partida em 2.0 (equivale a -3.5 sobre a nota
-        acumulada). NUNCA deixe acima de 2.0 nesse caso.
-
-   E) LIMITES FINAIS:
-      - Arredonde a nota final para UMA casa decimal.
-      - Garanta o intervalo mínimo 1.0 e máximo 10.0 (clamp final).
-
-   IMPORTANTE:
-   - Vocẽ DEVE atribuir uma nota para TODOS os atletas dos elencos dos dois
-     times em CADA partida, inclusive os que não possuem eventos — para esses,
-     a nota equivale a 6.0 + resultado do jogo + disciplina (se houver).
-   - Respeite a quantidade dos eventos quando indicada, ex.: "(x3)" = 3 ocorrências.
-   - NUNCA inventar eventos, gols, defesas, desarmes, cartões ou atletas que
-     não constem nos dados oficiais.
-   - Não conte a mesma ocorrência mais de uma vez.
-
-2. SELECIONAR o "11 Ideal da Rodada" (Seleção da Rodada):
-   - Formação tática: 4-3-3, 4-2-3-1 ou 4-4-2 (escolha a mais equilibrada com os disponíveis);
-   - 1 GOLEIRO;
-   - 4 defensores: ZAGUEIRO + LATERAL_DIREITO + LATERAL_ESQUERDO + 1 ZAGUEIRO ou LATERAL;
-   - 3 a 4 meio-campistas: VOLANTE, MEIA_DE_LIGACAO, MEIA_ATACANTE (quantidade varia conforme formação);
-   - 2 a 3 atacantes: PONTA_DIREITA, PONTA_ESQUERDA, SEGUNDO_ATACANTE, CENTROAVANTE;
-   - Priorizar as maiores notas, garantindo pelo menos uma posição por linha do campo;
-   - IMPORTANTE: se a rodada tiver MENOS de 11 atletas com ações registradas (ex: campeonato society/amador), monte uma ESCALAÇÃO PARCIAL com TODOS os atletas disponíveis, distribuídos por suas linhas — nunca inventar atletas ou posições;
-   - O melhor jogador da rodada vira o "Craque da Rodada";
-   - Montar banco de reservas (até 5) com os próximos melhores.
-
-3. RESPONDER SOMENTE EM JSON válido, seguindo EXATAMENTE este schema (sem texto fora do JSON):
-{
-  "ratings": [
-    { "player_id": "string", "rating": 8.7, "justification": "string curta" }
-  ],
-  "team_of_the_week": {
-    "formation": "4-3-3",
-    "lineup": [ { "player_id": "string", "position": "PONTA_DIREITA" } ],
-    "bench": [ { "player_id": "string", "position": "MEIA_ATACANTE" } ],
-    "star_player": { "player_id": "string" },
-    "highlights": "narrativa curta destacando a atuação do Craque da Rodada"
+    if (type === "RED_CARD" && isForPlayer) {
+      redCard = true;
+      continue;
+    }
+    if (type === "YELLOW_CARD" && isForPlayer) {
+      rating += YELLOW_CARD_PENALTY * qty;
+    }
+    if (type === "GOAL" && isForPlayer) {
+      rating += goalBonus * qty;
+    }
+    if (type === "PENALTY" && isForPlayer) {
+      rating += goalBonus * qty;
+    }
+    if (type === "OWN_GOAL" && isForPlayer) {
+      rating += OWN_GOAL_PENALTY * qty;
+    }
+    if (isAssister) {
+      rating += ASSIST_BONUS;
+    }
+    if (type === "SAVE" && isForPlayer && isGk) {
+      rating += PENALTY_SAVE_BONUS * qty;
+    }
   }
+
+  if (redCard) return clampRating(RED_CARD_FINAL_RATING);
+  return clampRating(rating);
 }
-`;
+
+// Calcula a nota nativa de TODOS os atletas do elenco de uma partida.
+export function computeNativeMatchRatings(match: RatingMatchInput): Map<string, number> {
+  const ratings = new Map<string, number>();
+  const events = match.events || [];
+  for (const squad of match.squads || []) {
+    if (!squad.player_id) continue;
+    ratings.set(squad.player_id, computeNativeRating(squad, match, events));
+  }
+  return ratings;
 }
 
 // ------------------------------------------------------------------
-// Seleção determinística do 11 ideal
+// Seleção determinística do 11 ideal (derivada apenas das notas).
 // ------------------------------------------------------------------
 function selectTeamOfWeek(
   ratings: RatingEntry[],
-  ai: z.infer<typeof aiResponseSchema>["team_of_the_week"],
   resolvePosition: (playerId: string, aiPosition?: string) => PlayerPosition | null
 ): TeamOfWeek {
   const sorted = [...ratings].sort((a, b) => b.rating - a.rating);
@@ -558,11 +551,11 @@ function selectTeamOfWeek(
   });
 
   return {
-    formation: ai.formation && ai.formation.length <= 10 ? ai.formation : "4-3-3",
+    formation: "4-3-3",
     lineup: lineup.map(toPlayer),
     bench: bench.map(toPlayer),
     star_player: starPlayer ? toPlayer(starPlayer) : null,
-    highlights: ai.highlights || "",
+    highlights: "",
   };
 }
 
@@ -578,7 +571,8 @@ export interface RatingAuditLogPayload {
     new_average_rating: number;
   }>;
   error?: string;
-  groq_mode?: "json" | "text";
+  mode?: "NATIVE_ENGINE";
+  groq_mode?: "json" | "text" | "NATIVE_ENGINE";
   ratings_count?: number;
   matches_count?: number;
 }
@@ -618,199 +612,70 @@ export async function writeRatingAuditLog(input: RatingAuditLogInput): Promise<v
 }
 
 // ------------------------------------------------------------------
-// Nota determinística de segurança: garante que NENHUM atleta do elenco fique
-// sem nota (nunca 0.0), mesmo que a IA omita alguém da resposta.
+// Idempotência: partidas que já possuem notas NÃO são reprocessadas.
 // ------------------------------------------------------------------
-function computeDeterministicRating(
-  squad: RatingSquadPlayer,
-  match: RatingMatchInput,
-  events: Array<Record<string, unknown>>
-): number {
-  let rating = 6.0;
+export async function listRatedMatchIds(
+  supabase: SupabaseClient,
+  matchIds: string[]
+): Promise<Set<string>> {
+  const rated = new Set<string>();
+  if (matchIds.length === 0) return rated;
 
-  const homeScore = Number(match.home_score) || 0;
-  const awayScore = Number(match.away_score) || 0;
-  const isHome = squad.team_id === match.home_team_id;
-  const teamScore = isHome ? homeScore : awayScore;
-  const oppScore = isHome ? awayScore : homeScore;
-  const cleanSheet = oppScore === 0;
+  const { data, error } = await supabase
+    .from("match_player_stats")
+    .select("match_id")
+    .in("match_id", matchIds)
+    .not("rating", "is", null);
 
-  if (teamScore > oppScore) rating += 0.5;
-  else if (teamScore < oppScore) rating -= 0.3;
-
-  const position = normalizePositionInput(squad.position);
-  const isGk = position === "GOLEIRO";
-  const isDef =
-    position === "ZAGUEIRO" ||
-    position === "LATERAL_DIREITO" ||
-    position === "LATERAL_ESQUERDO" ||
-    position === "VOLANTE";
-  const isMidAtt =
-    position === "MEIA_DE_LIGACAO" ||
-    position === "MEIA_ATACANTE" ||
-    position === "PONTA_DIREITA" ||
-    position === "PONTA_ESQUERDA" ||
-    position === "SEGUNDO_ATACANTE" ||
-    position === "CENTROAVANTE";
-
-  const playerId = squad.player_id || "";
-  let redCard = false;
-
-  for (const e of events) {
-    const eventPlayerId = e.player_id ? String(e.player_id) : "";
-    const assistPlayerId = e.assist_player_id ? String(e.assist_player_id) : "";
-    const type = String(e.type || "");
-    const qty = Number(e.quantity) || 1;
-
-    const isScorer = eventPlayerId === playerId;
-    const isAssister = assistPlayerId === playerId || type === "ASSIST" && eventPlayerId === playerId;
-
-    if (type === "YELLOW_CARD" && eventPlayerId === playerId) {
-      rating -= 0.5 * qty;
-    }
-    if (type === "RED_CARD" && eventPlayerId === playerId) {
-      redCard = true;
-    }
-
-    if (isScorer && (type === "GOAL" || type === "PENALTY")) {
-      rating += isDef ? 1.0 : 1.0; // gol vale +1.0 para qualquer posição
-    }
-    if (isAssister && (type === "ASSIST" || type === "GOAL" || type === "PENALTY")) {
-      rating += isDef ? 0.7 : 0.6;
-    }
-    if (type === "TACKLE" && eventPlayerId === playerId) {
-      rating += isDef ? 0.2 : isGk ? 0 : 0.1;
-    }
-    if (type === "SAVE" && eventPlayerId === playerId && isGk) {
-      rating += 0.3 * qty;
-    }
+  if (error && !isMissingTableError(error)) {
+    console.error("[rating-engine] Erro ao listar partidas já avaliadas:", error);
   }
 
-  if (isGk) {
-    rating -= 0.4 * (teamScore === oppScore ? 0 : oppScore);
-    if (cleanSheet && teamScore >= oppScore) rating += 1.0;
+  for (const row of (data as Array<{ match_id: string }>) || []) {
+    rated.add(row.match_id);
   }
-  if (isDef && cleanSheet) rating += 0.5;
+  return rated;
+}
 
-  if (redCard) rating = 2.0;
+export async function fetchExistingRatings(
+  supabase: SupabaseClient,
+  matchIds: string[]
+): Promise<Map<string, Map<string, number>>> {
+  const byMatch = new Map<string, Map<string, number>>();
+  if (matchIds.length === 0) return byMatch;
 
-  return Math.min(10, Math.max(1, Math.round(rating * 10) / 10));
+  const { data, error } = await supabase
+    .from("match_player_stats")
+    .select("match_id, player_id, rating")
+    .in("match_id", matchIds)
+    .not("rating", "is", null);
+
+  if (error && !isMissingTableError(error)) {
+    console.error("[rating-engine] Erro ao carregar notas existentes:", error);
+  }
+
+  for (const row of (data as Array<{ match_id: string; player_id: string; rating: number }>) || []) {
+    const matchMap = byMatch.get(row.match_id) || new Map<string, number>();
+    matchMap.set(row.player_id, Number(row.rating));
+    byMatch.set(row.match_id, matchMap);
+  }
+  return byMatch;
 }
 
 // ------------------------------------------------------------------
-// Orquestração principal: gera as notas de uma rodada completa
+// Montagem das linhas finais (metadados confiáveis do banco) + posições
 // ------------------------------------------------------------------
-export interface GenerateRoundRatingsInput {
-  supabase: SupabaseClient;
-  apiKey: string;
-  championshipId: string;
-  championshipName?: string;
-  seasonId: string;
-  roundNumber: number;
-  roundName: string;
-  matches: RatingMatchInput[];
-  createdBy?: string | null;
-}
-
-export interface GenerateRoundRatingsResult {
+interface BuiltRatings {
   ratings: RatingEntry[];
-  teamOfTheWeek: TeamOfWeek;
+  resolvePosition: (playerId: string, aiPosition?: string) => PlayerPosition | null;
 }
 
-export async function generateRoundRatings(
-  input: GenerateRoundRatingsInput
-): Promise<GenerateRoundRatingsResult> {
-  const {
-    supabase,
-    apiKey,
-    championshipId,
-    championshipName,
-    seasonId,
-    roundNumber,
-    roundName,
-    matches,
-    createdBy,
-  } = input;
-
-  // ----- Filtro estrito: só partidas FINALIZADAS, sem duplicatas -----
-  const normalizedMatches = normalizeRoundMatches(matches);
-
-  if (normalizedMatches.length === 0) {
-    throw new Error(
-      "Nenhuma partida finalizada (status FINISHED/FINALIZADO) encontrada nesta rodada para avaliar."
-    );
-  }
-
-  // ----- Hidratação direto do banco: elencos completos + eventos oficiais -----
-  const hydratedMatches = await hydrateMatchRosters(supabase, seasonId, normalizedMatches);
-
-  const roundInput = buildRoundInput(hydratedMatches);
-  const prompt = buildPrompt(championshipName, roundName, roundInput);
-
-  // ----- Chamada à Groq com retry sem response_format (evita 400 json_validate_failed) -----
-  const messages = [
-    {
-      role: "system" as const,
-      content:
-        "Você é um analista técnico de futebol especialista em avaliação de desempenho e análises táticas. Siga rigorosamente o motor de cálculo de notas informado, sem opiniões subjetivas. Responda SOMENTE com JSON válido, sem texto fora do JSON.",
-    },
-    { role: "user" as const, content: prompt },
-  ];
-
-  let content = "";
-  let groqModeUsed: "json" | "text" = "json";
-
-  try {
-    const response = await groqChatCompletion({
-      apiKey,
-      messages,
-      temperature: 0.1,
-      response_format: { type: "json_object" },
-    });
-    content = response.choices[0]?.message?.content || "";
-  } catch (firstError) {
-    console.warn(
-      "[rating-engine] JSON mode falhou (400 json_validate_failed?) — tentando sem response_format.",
-      firstError
-    );
-    groqModeUsed = "text";
-
-    const response = await groqChatCompletion({
-      apiKey,
-      messages,
-      temperature: 0.1,
-    });
-    content = response.choices[0]?.message?.content || "";
-  }
-
-  let aiParsed: z.infer<typeof aiResponseSchema>;
-  try {
-    const jsonText = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
-    aiParsed = aiResponseSchema.parse(JSON.parse(jsonText));
-  } catch (err) {
-    console.error("JSON inválido retornado pela IA:", err);
-    throw new Error("A IA retornou um JSON inválido. Tente novamente.");
-  }
-
-  if (!Array.isArray(aiParsed.ratings) || aiParsed.ratings.length === 0) {
-    console.error("IA retornou lista de notas vazia:", content);
-    throw new Error("A IA não retornou nenhuma nota de atleta para esta rodada.");
-  }
-
-  // ----- Enriquecimento com metadados confiáveis do banco -----
-  const matchByPlayer = new Map<string, string>();
-  const playerEventsByMatch = new Map<string, Array<Record<string, unknown>>>();
-  for (const m of hydratedMatches) {
-    const matchId = m.matchId ?? m.id;
-    if (!matchId) continue;
-    playerEventsByMatch.set(matchId, m.events || []);
-    for (const s of m.squads || []) {
-      if (s.player_id) {
-        matchByPlayer.set(s.player_id, matchId);
-      }
-    }
-  }
-
+async function buildRatingRows(
+  supabase: SupabaseClient,
+  seasonId: string,
+  hydratedMatches: RatingMatchInput[],
+  ratingsByMatch: Map<string, Map<string, number>>
+): Promise<BuiltRatings> {
   const { data: players, error: playersError } = await supabase
     .from("players")
     .select("id, name, position, photo_url, teams(name)")
@@ -885,27 +750,24 @@ export async function generateRoundRatings(
 
   const ratings: RatingEntry[] = [];
   const usedIds = new Set<string>();
-  const aiRatingsByPlayer = new Map<string, number>();
-  for (const r of aiParsed.ratings) {
-    aiRatingsByPlayer.set(r.player_id, r.rating);
-  }
 
   // GARANTIA de cobertura: percorre TODOS os atletas dos elencos hidratados.
-  // Usa a nota da IA quando existir; caso contrário aplica a nota determinística
-  // (6.0 base + resultado + eventos), para que NENHUM atleta fique sem nota (0.0).
+  // Usa a nota nativa computada quando existir; caso contrário aplica o motor
+  // determinístico (6.0 base + resultado + eventos).
   for (const m of hydratedMatches) {
     const matchId = m.matchId ?? m.id;
     if (!matchId) continue;
-    const matchEvents = playerEventsByMatch.get(matchId) || [];
+    const matchRatings = ratingsByMatch.get(matchId) || new Map<string, number>();
+    const matchEvents = m.events || [];
 
     for (const s of m.squads || []) {
       if (!s.player_id || usedIds.has(s.player_id)) continue;
       const playerId = s.player_id;
-      const aiRating = aiRatingsByPlayer.get(playerId);
+      const nativeRating = matchRatings.get(playerId);
       const rating =
-        aiRating !== undefined
-          ? aiRating
-          : computeDeterministicRating(s, m, matchEvents);
+        nativeRating !== undefined
+          ? nativeRating
+          : computeNativeRating(s, m, matchEvents);
 
       const row = buildRow(playerId, rating);
       if (row) {
@@ -915,26 +777,264 @@ export async function generateRoundRatings(
     }
   }
 
-  const teamOfTheWeek = selectTeamOfWeek(ratings, aiParsed.team_of_the_week, resolvePosition);
+  return { ratings, resolvePosition };
+}
 
-  // ----- Persistir notas em match_player_stats (trigger recalcula average_rating) -----
-  const upsertRows = ratings
-    .filter((r) => matchByPlayer.has(r.player_id))
-    .map((r) => ({
-      match_id: matchByPlayer.get(r.player_id)!,
+// ------------------------------------------------------------------
+// Persistência do motor NATIVO para UMA partida hidratada:
+// cálculo determinístico + upsert em match_player_stats (que dispara o
+// trigger de sincronização de players.average_rating) + log de auditoria.
+// ------------------------------------------------------------------
+interface PersistMatchRatingsInput {
+  supabase: SupabaseClient;
+  championshipId: string;
+  seasonId: string;
+  roundNumber: number;
+  roundName: string;
+  hydratedMatch: RatingMatchInput;
+  createdBy?: string | null;
+}
+
+async function persistMatchRatings(input: PersistMatchRatingsInput): Promise<RatingEntry[]> {
+  const {
+    supabase,
+    championshipId,
+    seasonId,
+    roundNumber,
+    roundName,
+    hydratedMatch,
+    createdBy,
+  } = input;
+  const matchId = hydratedMatch.matchId ?? hydratedMatch.id ?? "";
+
+  try {
+    // 100% determinístico: calcula a nota nativa de TODOS os atletas do elenco.
+    const nativeRatings = computeNativeMatchRatings(hydratedMatch);
+
+    // Metadados confiáveis do banco + posições normalizadas.
+    const { ratings } = await buildRatingRows(
+      supabase,
+      seasonId,
+      [hydratedMatch],
+      new Map([[matchId, nativeRatings]])
+    );
+
+    const upsertRows = ratings.map((r) => ({
+      match_id: matchId,
       player_id: r.player_id,
       rating: r.rating,
     }));
 
-  if (upsertRows.length > 0) {
-    const { error: upsertError } = await supabase
-      .from("match_player_stats")
-      .upsert(upsertRows, { onConflict: "match_id,player_id" });
+    // Persistência direta em match_player_stats. O upsert dispara o trigger
+    // trg_sync_player_average_rating (INSERT/UPDATE OF rating), que mantém
+    // players.average_rating consistente para cada atleta.
+    if (upsertRows.length > 0 && matchId) {
+      const { error: upsertError } = await supabase
+        .from("match_player_stats")
+        .upsert(upsertRows, { onConflict: "match_id,player_id" });
 
-    if (upsertError && !isMissingTableError(upsertError)) {
-      console.error("[rating-engine] Erro ao salvar notas em match_player_stats:", upsertError);
+      if (upsertError && !isMissingTableError(upsertError)) {
+        console.error("[rating-engine] Erro ao salvar notas em match_player_stats:", upsertError);
+      }
     }
+
+    const newAverages = await fetchNewAverageRatings(
+      supabase,
+      ratings.map((r) => r.player_id)
+    );
+
+    await writeRatingAuditLog({
+      supabase,
+      championshipId,
+      seasonId,
+      roundNumber,
+      roundName,
+      status: "SUCCESS",
+      payload: {
+        match_ids: matchId ? [matchId] : [],
+        players: ratings.map((r) => ({
+          player_id: r.player_id,
+          player_name: r.player_name,
+          rating: r.rating,
+          new_average_rating: newAverages.get(r.player_id) ?? 0,
+        })),
+        mode: "NATIVE_ENGINE",
+        groq_mode: "NATIVE_ENGINE",
+        ratings_count: ratings.length,
+        matches_count: 1,
+      },
+      createdBy,
+    });
+
+    return ratings;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Erro ao gerar notas da partida.";
+    console.error(`[rating-engine] Erro na partida ${matchId}:`, err);
+
+    await writeRatingAuditLog({
+      supabase,
+      championshipId,
+      seasonId,
+      roundNumber,
+      roundName,
+      status: "ERROR",
+      payload: {
+        match_ids: matchId ? [matchId] : [],
+        players: [],
+        error: errorMessage,
+      },
+      createdBy,
+    }).catch(() => undefined);
+
+    throw err;
   }
+}
+
+// ------------------------------------------------------------------
+// Cálculo por partida individual (recalcula SEMPRE, é um pedido explícito)
+// ------------------------------------------------------------------
+export interface GenerateMatchRatingsInput {
+  supabase: SupabaseClient;
+  championshipId: string;
+  seasonId: string;
+  roundNumber: number;
+  roundName: string;
+  match: RatingMatchInput;
+  createdBy?: string | null;
+}
+
+export interface GenerateMatchRatingsResult {
+  ratings: RatingEntry[];
+}
+
+export async function generateMatchRatings(
+  input: GenerateMatchRatingsInput
+): Promise<GenerateMatchRatingsResult> {
+  const normalizedMatches = normalizeRoundMatches([input.match]);
+
+  if (normalizedMatches.length === 0) {
+    throw new Error(
+      "Partida não finalizada (status FINISHED/FINALIZADO) encontrada para avaliar."
+    );
+  }
+
+  const [hydratedMatch] = await hydrateMatchRosters(
+    input.supabase,
+    input.seasonId,
+    normalizedMatches
+  );
+  const matchId = hydratedMatch.matchId ?? hydratedMatch.id ?? "";
+
+  const persisted = await persistMatchRatings({ ...input, hydratedMatch });
+
+  // Reconstrói as linhas a partir do que foi persistido (carbura nas posições
+  // e metadados finais) sem refazer o cálculo.
+  const { ratings } = await buildRatingRows(
+    input.supabase,
+    input.seasonId,
+    [hydratedMatch],
+    new Map([[matchId, new Map(persisted.map((r) => [r.player_id, r.rating]))]])
+  );
+
+  return { ratings };
+}
+
+// ------------------------------------------------------------------
+// Orquestração principal: gera as notas de uma rodada completa.
+// O cálculo é 100% nativo e determinístico (sem IA); partidas já avaliadas
+// em match_player_stats são congeladas (não reprocessadas a menos que force).
+// ------------------------------------------------------------------
+export interface GenerateRoundRatingsInput {
+  supabase: SupabaseClient;
+  championshipId: string;
+  seasonId: string;
+  roundNumber: number;
+  roundName: string;
+  matches: RatingMatchInput[];
+  createdBy?: string | null;
+  force?: boolean;
+}
+
+export interface GenerateRoundRatingsResult {
+  ratings: RatingEntry[];
+  teamOfTheWeek: TeamOfWeek;
+}
+
+export async function generateRoundRatings(
+  input: GenerateRoundRatingsInput
+): Promise<GenerateRoundRatingsResult> {
+  const {
+    supabase,
+    championshipId,
+    seasonId,
+    roundNumber,
+    roundName,
+    matches,
+    createdBy,
+    force = false,
+  } = input;
+
+  // ----- Filtro estrito: só partidas FINALIZADAS, sem duplicatas -----
+  const normalizedMatches = normalizeRoundMatches(matches);
+
+  if (normalizedMatches.length === 0) {
+    throw new Error(
+      "Nenhuma partida finalizada (status FINISHED/FINALIZADO) encontrada nesta rodada para avaliar."
+    );
+  }
+
+  // ----- Hidratação direto do banco: elencos completos + eventos oficiais -----
+  const hydratedMatches = await hydrateMatchRosters(supabase, seasonId, normalizedMatches);
+
+  const matchIds = hydratedMatches
+    .map((m) => m.matchId ?? m.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+  // ----- Congelamento: notas já gravadas em match_player_stats NÃO são
+  // reprocessadas (a menos que force=true — re-geração explícita). -----
+  const ratedMatchIds = force ? new Set<string>() : await listRatedMatchIds(supabase, matchIds);
+  const pendingMatches = hydratedMatches.filter((m) => {
+    const id = m.matchId ?? m.id;
+    return !id || !ratedMatchIds.has(id);
+  });
+  const alreadyRatedMatches = hydratedMatches.filter((m) => {
+    const id = m.matchId ?? m.id;
+    return Boolean(id && ratedMatchIds.has(id));
+  });
+
+  const ratingsByMatch = new Map<string, Map<string, number>>();
+
+  // 1) Partidas pendentes: cálculo nativo determinístico + persistência.
+  for (const hydrated of pendingMatches) {
+    const matchId = hydrated.matchId ?? hydrated.id ?? "";
+    const entries = await persistMatchRatings({
+      supabase,
+      championshipId,
+      seasonId,
+      roundNumber,
+      roundName,
+      hydratedMatch: hydrated,
+      createdBy,
+    });
+    ratingsByMatch.set(matchId, new Map(entries.map((r) => [r.player_id, r.rating])));
+  }
+
+  // 2) Partidas já avaliadas: lê do banco (zero recálculo).
+  const existingById = await fetchExistingRatings(supabase, alreadyRatedMatches.map((m) => (m.matchId ?? m.id) as string));
+  for (const [matchId, playerRatings] of existingById) {
+    ratingsByMatch.set(matchId, playerRatings);
+  }
+
+  // ----- Reconstrói todas as linhas (metadados + posições do banco) -----
+  const { ratings, resolvePosition } = await buildRatingRows(
+    supabase,
+    seasonId,
+    hydratedMatches,
+    ratingsByMatch
+  );
+
+  // ----- Seleção da Rodada (determinística a partir das notas) -----
+  const teamOfTheWeek = selectTeamOfWeek(ratings, resolvePosition);
 
   // ----- Persistir a Seleção da Rodada em round_summaries -----
   if (teamOfTheWeek.lineup.length > 0) {
@@ -975,37 +1075,6 @@ export async function generateRoundRatings(
       console.error("[rating-engine] Erro ao persistir seleção da rodada:", saveError);
     }
   }
-
-  // ----- Registrar log de auditoria com as novas médias -----
-  const newAverages = await fetchNewAverageRatings(
-    supabase,
-    ratings.map((r) => r.player_id)
-  );
-
-  // match_ids DISTINTOS (Set) — antes contávamos atletas como "partidas".
-  const distinctMatchIds = Array.from(new Set(matchByPlayer.values()));
-
-  await writeRatingAuditLog({
-    supabase,
-    championshipId,
-    seasonId,
-    roundNumber,
-    roundName,
-    status: "SUCCESS",
-    payload: {
-      match_ids: distinctMatchIds,
-      players: ratings.map((r) => ({
-        player_id: r.player_id,
-        player_name: r.player_name,
-        rating: r.rating,
-        new_average_rating: newAverages.get(r.player_id) ?? 0,
-      })),
-      groq_mode: groqModeUsed,
-      ratings_count: ratings.length,
-      matches_count: distinctMatchIds.length,
-    },
-    createdBy,
-  });
 
   return { ratings, teamOfTheWeek };
 }

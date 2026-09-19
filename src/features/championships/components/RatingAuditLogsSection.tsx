@@ -170,12 +170,13 @@ export function RatingAuditLogsSection({
           </div>
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              Logs de Auditoria de Notas
+              Logs de Notas
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Histórico de gerações das notas por partida. Visível apenas para
-              administradores. Use o recálculo para preencher notas de rodadas
-              históricas que ficaram sem avaliação.
+              Registro de cada geração de notas (uma entrada por partida),
+              visível apenas para administradores. Notas calculadas ficam
+              congeladas em match_player_stats e não são reprocessadas a menos
+              que uma re-geração seja solicitada.
             </p>
           </div>
         </div>

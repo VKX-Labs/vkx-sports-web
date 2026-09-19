@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTournamentGenerator } from "./useTournamentGenerator";
 import { advanceWinnerIfPhaseFinished } from "@/services/bracketEngine";
@@ -49,6 +49,7 @@ export function useRodadasLocal(championshipId: string) {
   const [pageLoading, setPageLoading] = useState<boolean>(true);
   const [generatorTimeout, setGeneratorTimeout] = useState<boolean>(false);
   const [, setCurrentSeasonId] = useState<string | null>(null);
+  const hasInitializedCurrentRound = useRef(false);
 
   const fetchRoundsAndMatches = useCallback(async () => {
     try {
@@ -62,7 +63,7 @@ export function useRodadasLocal(championshipId: string) {
 
       const { data: season, error: seasonError } = await supabase
         .from("seasons")
-        .select("id")
+        .select("id, current_round_number")
         .eq("championship_id", championshipId)
         .maybeSingle();
 
@@ -165,6 +166,15 @@ export function useRodadasLocal(championshipId: string) {
       });
 
       setRounds(formattedRounds);
+
+      if (!hasInitializedCurrentRound.current && formattedRounds.length > 0) {
+        hasInitializedCurrentRound.current = true;
+        const activeRound = Number(season.current_round_number) || 1;
+        const activeIndex = formattedRounds.findIndex(
+          (r) => r.round_number === activeRound
+        );
+        setSelectedRoundIndex(activeIndex >= 0 ? activeIndex : 0);
+      }
     } catch (err: any) {
       console.error("Erro no carregamento de rodadas:", {
         message: err?.message || err,

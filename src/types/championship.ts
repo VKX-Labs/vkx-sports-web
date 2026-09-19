@@ -9,6 +9,7 @@ export interface Season {
   state: string | null;
   tournament_type: TournamentType;
   max_teams: number | null;
+  current_round_number: number;
 }
 
 export interface Championship {

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRodadasPageController } from "./hooks/useRodadasPageController";
-import { Calendar, RefreshCw, Shield, Trophy, Plus, Trash2, Wand2, ImageIcon } from "lucide-react";
+import { Calendar, RefreshCw, Shield, Trophy, Plus, Trash2, Wand2, ImageIcon, Flag, Loader2 } from "lucide-react";
 import { getPhaseDisplayName, inferLegFromRoundName } from "@/types/tournament";
 import Button from "@/components/ui/button";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
@@ -14,7 +14,7 @@ import { RoundArtModal } from "@/components/match/RoundArtModal";
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 
 export default function RodadasPage() {
-  const { championship, canEdit } = useWorkspace();
+  const { championship, canEdit, canManageRatings } = useWorkspace();
 
   const {
     loading,
@@ -45,6 +45,55 @@ export default function RodadasPage() {
   const [matchToEdit, setMatchToEdit] = React.useState<EditMatchTarget | null>(null);
   const [isGeneratorModalOpen, setIsGeneratorModalOpen] = React.useState(false);
   const [isArtModalOpen, setIsArtModalOpen] = useState(false);
+  const [isFinalizingRound, setIsFinalizingRound] = useState(false);
+  const [finalizeMessage, setFinalizeMessage] = useState<string | null>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+
+  const handleFinalizeRound = async () => {
+    if (!currentRound || !championship?.id) return;
+    const roundName = currentRound.name || `${currentRound.round_number}ª Rodada`;
+
+    if (
+      !confirm(
+        `Finalizar a rodada "${roundName}"?\n\nO campeonato passará a exibir a próxima rodada por padrão. Isto NÃO recalcula notas — as notas são geradas sob demanda pelas opções de notas/auditoria. A rodada anterior continua acessível para ajustes.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsFinalizingRound(true);
+      setFinalizeError(null);
+      setFinalizeMessage(null);
+
+      const currentIndex = rounds.findIndex((r) => r.id === currentRound.id);
+      const res = await fetch("/api/finalize-round", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          championshipId: championship?.id,
+          roundNumber: currentRound.round_number,
+          roundName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao finalizar rodada.");
+
+      await handleRefresh();
+      if (currentIndex >= 0) {
+        setSelectedRoundIndex(Math.min(currentIndex + 1, rounds.length - 1));
+      }
+
+      setFinalizeMessage(
+        data.message || `Rodada ${currentRound.round_number} finalizada com sucesso.`
+      );
+    } catch (err: any) {
+      setFinalizeError(err.message || "Erro ao finalizar rodada.");
+    } finally {
+      setIsFinalizingRound(false);
+    }
+  };
 
   const handleEditMatch = (
     match: MatchCardMatch & {
@@ -202,6 +251,24 @@ export default function RodadasPage() {
             </button>
           )}
 
+          {canManageRatings && currentRound && (
+            <button
+              onClick={handleFinalizeRound}
+              disabled={isFinalizingRound}
+              title="Avançar para a próxima rodada (não recalcula notas)"
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              {isFinalizingRound ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Flag className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isFinalizingRound ? "Finalizando..." : "Finalizar Rodada"}
+              </span>
+            </button>
+          )}
+
           {canEdit && (
             <button
               onClick={() => setIsModalOpen(true)}
@@ -234,6 +301,18 @@ export default function RodadasPage() {
           </button>
         </div>
       </div>
+
+      {finalizeError && (
+        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 px-4 py-3 rounded-xl">
+          {finalizeError}
+        </div>
+      )}
+
+      {finalizeMessage && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 rounded-xl">
+          {finalizeMessage}
+        </div>
+      )}
 
       <div className="space-y-3">
         {currentRound?.matches && currentRound.matches.length > 0 ? (

@@ -39,14 +39,6 @@ async function loadEventNames(
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "A chave GROQ_API_KEY não está configurada no arquivo .env.local." },
-        { status: 500 }
-      );
-    }
-
     const body = (await req.json()) as {
       championshipId?: string;
       seasonId?: string;
@@ -418,14 +410,13 @@ export async function POST(req: NextRequest) {
       try {
         const { ratings } = await generateRoundRatings({
           supabase,
-          apiKey,
           championshipId,
-          championshipName: String(championshipData.name || "Campeonato"),
           seasonId: seasonIdResolved,
           roundNumber: r.round_number,
           roundName,
           matches: payloadMatches,
           createdBy: userId,
+          force: Boolean(force),
         });
 
         results.push({
