@@ -41,3 +41,12 @@ export function canManagePunishments({
   const isOwner = Boolean(userId && ownerId && userId === ownerId);
   return isOwner || myRole === "ADMIN";
 }
+
+export function canManageRatings({
+  userId,
+  ownerId,
+  myRole,
+}: CanEditChampionshipParams): boolean {
+  const isOwner = Boolean(userId && ownerId && userId === ownerId);
+  return isOwner || myRole === "ADMIN";
+}

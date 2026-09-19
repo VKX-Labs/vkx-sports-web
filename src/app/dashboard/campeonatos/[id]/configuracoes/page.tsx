@@ -13,6 +13,7 @@ import {
 
 import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
 import { useChampionshipMembers } from "@/hooks/useChampionshipMembers";
+import { RatingAuditLogsSection } from "@/features/championships/components/RatingAuditLogsSection";
 import {
   removeChampionshipMember,
   setChampionshipMemberRole,
@@ -21,7 +22,7 @@ import { MEMBER_ROLE_LABELS } from "@/types/championship-member";
 import type { ChampionshipMember } from "@/types/championship-member";
 
 export default function ConfiguracoesPage() {
-  const { championship, user, isOwner, canEdit } = useWorkspace();
+  const { championship, user, isOwner, canEdit, canManageRatings } = useWorkspace();
   const { members, loading, refresh } = useChampionshipMembers(championship.id);
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
 
@@ -328,6 +329,10 @@ export default function ConfiguracoesPage() {
             )}
           </div>
         </section>
+      )}
+
+      {canManageRatings && (
+        <RatingAuditLogsSection championshipId={championship.id} />
       )}
     </div>
   );

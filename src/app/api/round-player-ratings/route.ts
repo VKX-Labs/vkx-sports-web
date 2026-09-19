@@ -1,155 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
-import { groqChatCompletion } from "@/lib/groq";
-import { PLAYER_POSITIONS } from "@/types/player";
-import type { PlayerPosition } from "@/types/player";
+import {
+  generateRoundRatings,
+  isMissingTableError,
+  writeRatingAuditLog,
+  type RatingMatchInput,
+} from "@/lib/rating-engine";
 
-function isMissingTableError(err: any): boolean {
-  const message = `${err?.message || ""} ${err?.error_description || ""}`.toLowerCase();
-  return (
-    message.includes("could not find the table") ||
-    message.includes("does not exist") ||
-    message.includes("relation") ||
-    message.includes("not found")
-  );
-}
-
-// ------------------------------------------------------------------
-// Contrato de entrada/saída (docs/03 §2.2)
-// ------------------------------------------------------------------
-interface RoundPlayerRatingsRequest {
-  championshipId: string;
-  championshipName?: string;
-  seasonId: string;
-  roundNumber: number;
-  roundName: string;
-  matches: Array<{
-    matchId: string;
-    home_team?: { name?: string; badge_url?: string };
-    away_team?: { name?: string; badge_url?: string };
-    home_score?: number;
-    away_score?: number;
-    events?: Array<Record<string, any>>;
-    squads?: Array<{ player_id: string; name?: string; position?: string; photo_url?: string; team_name?: string }>;
-  }>;
-}
-
-interface RatingRow {
-  player_id: string;
-  player_name: string;
-  team_name: string;
-  position: PlayerPosition | null;
-  photo_url: string | null;
-  rating: number;
-}
-
-interface TeamOfWeekPlayer {
-  player_id: string;
-  player_name: string;
-  team_name: string;
-  position: PlayerPosition | null;
-  photo_url: string | null;
-  rating: number;
-}
-
-interface TeamOfWeek {
-  formation: string;
-  lineup: TeamOfWeekPlayer[];
-  bench: TeamOfWeekPlayer[];
-  star_player: TeamOfWeekPlayer | null;
-  highlights: string;
-}
-
-// Schema da resposta da IA (docs/03 §2.3) — validado em runtime.
-const aiRatingSchema = z.object({
-  player_id: z.string().min(1),
-  rating: z.number().min(0).max(10),
-  justification: z.string().optional(),
+const requestSchema = z.object({
+  championshipId: z.string().min(1),
+  championshipName: z.string().optional(),
+  seasonId: z.string().min(1),
+  roundNumber: z.number().int().positive(),
+  roundName: z.string().min(1),
+  matches: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        matchId: z.string().optional(),
+        home_team_id: z.string().nullable().optional(),
+        away_team_id: z.string().nullable().optional(),
+        home_team: z
+          .object({ name: z.string().optional(), badge_url: z.string().optional() })
+          .nullable()
+          .optional(),
+        away_team: z
+          .object({ name: z.string().optional(), badge_url: z.string().optional() })
+          .nullable()
+          .optional(),
+        home_score: z.number().nullable().optional(),
+        away_score: z.number().nullable().optional(),
+        status: z.string().nullable().optional(),
+        events: z.array(z.record(z.string(), z.unknown())).optional(),
+        squads: z
+          .array(
+            z.object({
+              player_id: z.string().optional(),
+              name: z.string().optional(),
+              position: z.string().nullable().optional(),
+              photo_url: z.string().nullable().optional(),
+              team_name: z.string().optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .min(1),
 });
-
-const aiResponseSchema = z.object({
-  ratings: z.array(aiRatingSchema),
-  team_of_the_week: z.object({
-    formation: z.string().optional(),
-    lineup: z.array(
-      z.object({ player_id: z.string().min(1), position: z.string().optional() })
-    ),
-    bench: z.array(
-      z.object({ player_id: z.string().min(1), position: z.string().optional() })
-    ),
-    star_player: z.object({ player_id: z.string().min(1) }),
-    highlights: z.string().default(""),
-  }),
-});
-
-// Linhas do campo (docs/03 §3)
-const POSITION_LINES: Record<string, PlayerPosition[]> = {
-  GK: ["GOLEIRO"],
-  DEF: ["ZAGUEIRO", "LATERAL_DIREITO", "LATERAL_ESQUERDO"],
-  MID: ["VOLANTE", "MEIA_DE_LIGACAO", "MEIA_ATACANTE"],
-  ATT: ["PONTA_DIREITA", "PONTA_ESQUERDA", "SEGUNDO_ATACANTE", "CENTROAVANTE"],
-};
-
-const LINE_SLOTS: Record<string, number> = { GK: 1, DEF: 4, MID: 3, ATT: 3 };
-
-// Sinônimos comuns de posição (cadastros genéricos, nomes curtos, termos
-// do jogo) normalizados para as posições oficiais do app.
-const POSITION_ALIASES: Record<string, PlayerPosition> = {
-  GK: "GOLEIRO",
-  GOL: "GOLEIRO",
-  GOLEIRO: "GOLEIRO",
-  DEF: "ZAGUEIRO",
-  DEFENSOR: "ZAGUEIRO",
-  DEFESA: "ZAGUEIRO",
-  ZAG: "ZAGUEIRO",
-  ZAGUEIRO: "ZAGUEIRO",
-  LB: "LATERAL_ESQUERDO",
-  LE: "LATERAL_ESQUERDO",
-  LATERAL_ESQUERDO: "LATERAL_ESQUERDO",
-  RB: "LATERAL_DIREITO",
-  LD: "LATERAL_DIREITO",
-  LATERAL_DIREITO: "LATERAL_DIREITO",
-  LATERAL: "LATERAL_DIREITO",
-  VOL: "VOLANTE",
-  VOLANTE: "VOLANTE",
-  MC: "MEIA_DE_LIGACAO",
-  MEC: "MEIA_DE_LIGACAO",
-  MEIA_CENTRAL: "MEIA_DE_LIGACAO",
-  MEIA_DE_LIGACAO: "MEIA_DE_LIGACAO",
-  MEI: "MEIA_ATACANTE",
-  MEIA: "MEIA_ATACANTE",
-  MEIO: "MEIA_ATACANTE",
-  MEIA_ATACANTE: "MEIA_ATACANTE",
-  MCO: "MEIA_ATACANTE",
-  MID: "MEIA_ATACANTE",
-  CM: "MEIA_ATACANTE",
-  PONTA_DIREITA: "PONTA_DIREITA",
-  PD: "PONTA_DIREITA",
-  PONTA_ESQUERDA: "PONTA_ESQUERDA",
-  PE: "PONTA_ESQUERDA",
-  SS: "SEGUNDO_ATACANTE",
-  SA: "SEGUNDO_ATACANTE",
-  "9": "SEGUNDO_ATACANTE",
-  SEGUNDO_ATACANTE: "SEGUNDO_ATACANTE",
-  ATT: "CENTROAVANTE",
-  ATA: "CENTROAVANTE",
-  ATACANTE: "CENTROAVANTE",
-  CA: "CENTROAVANTE",
-  ST: "CENTROAVANTE",
-  CENTROAVANTE: "CENTROAVANTE",
-};
-
-function normalizePositionInput(value?: string | null): PlayerPosition | null {
-  if (!value) return null;
-  const key = value
-    .toUpperCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z]/g, "");
-  return POSITION_ALIASES[key] ?? null;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -161,157 +59,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as RoundPlayerRatingsRequest;
-    const { championshipId, championshipName, seasonId, roundNumber, roundName, matches } = body;
-
-    if (!championshipId || !seasonId || !roundNumber || !roundName) {
-      return NextResponse.json(
-        { error: "championshipId, seasonId, roundNumber e roundName são obrigatórios." },
-        { status: 400 }
-      );
+    const parsedBody = requestSchema.safeParse(await req.json());
+    if (!parsedBody.success) {
+      const message = parsedBody.error.issues[0]?.message || "Payload inválido.";
+      const field = parsedBody.error.issues[0]?.path?.join(".") || "body";
+      return NextResponse.json({ error: `${field}: ${message}` }, { status: 400 });
     }
 
-    if (!matches || !Array.isArray(matches) || matches.length === 0) {
-      return NextResponse.json(
-        { error: "Nenhuma partida encontrada nesta rodada para avaliar." },
-        { status: 400 }
-      );
-    }
-
-    // ------------------------------------------------------------------
-    // 1. Montar input estruturado da rodada para a IA
-    // ------------------------------------------------------------------
-    const roundInput = matches
-      .map((m, idx) => {
-        const homeTeam = m.home_team?.name || `Mandante ${idx + 1}`;
-        const awayTeam = m.away_team?.name || `Visitante ${idx + 1}`;
-        const events = (m.events || [])
-          .map(
-            (e: any) => {
-              const qty = Number(e.quantity) || 1;
-              const qtyLabel = qty > 1 ? ` (x${qty})` : "";
-              return `- [${e.type}] ${e.player_name || e.player?.name || "Jogador"} (${e.team_name || e.team?.name || homeTeam})${qtyLabel}${e.minute ? ` aos ${e.minute}min` : ""}`;
-            }
-          )
-          .join("\n");
-        const squads = (m.squads || [])
-          .map(
-            (s) =>
-              `- ${s.name || s.player_id} | ${s.position || "SEM_POSICAO"} | ${s.team_name || homeTeam}`
-          )
-          .join("\n");
-
-        return `
-📌 Jogo ${idx + 1}: ${homeTeam} ${m.home_score ?? 0} x ${m.away_score ?? 0} ${awayTeam}
-ESCALAÇÕES:
-${squads || "- (sem escalações informadas)"}
-EVENTOS:
-${events || "- (sem eventos)"}
-`;
-      })
-      .join("\n---\n");
-
-    const prompt = `
-Você é um analista técnico de futebol especialista em avaliação de desempenho.
-Campeonato: "${championshipName || "desconhecido"}".
-Você recebe os dados OFICIAIS de uma rodada (placares, eventos e escalações com posições).
-
-DADOS OFICIAIS DA RODADA (${roundName}):
-${roundInput}
-
-TAREFAS:
-1. ATRIBUIR nota de 0.0 a 10.0 (UMA casa decimal) para CADA atleta listado nas escalações, baseado em:
-
-   CRITÉRIOS POR POSIÇÃO:
-   - GOLEIRO: Defesas, clean sheet (meta limpa), distribuição, posicionamento;
-   - DEFENSORES (ZAGUEIRO, LATERAL_DIREITO, LATERAL_ESQUERDO):
-     * Desarmes (tackles) — evento [TACKLE] nos dados;
-     * Defesas/Cortes — desarmes que interrompem ataques;
-     * Posição da Equipe na Tabela (se disponível nos dados);
-     * Resultado do Jogo: vitória valoriza (+), empate neutro, derrota penaliza;
-     * Clean sheet (0 gols sofridos) = bônus significativo;
-     * Nota base para defensores: 6.0 (apenas cumpriu o esperado);
-   - VOLANTE: Desarmes, intercepções, distribuição, assistências;
-   - MEIA_CENTRAL: Criatividade, passes-chave, assistências, controle de posse;
-   - MEIA_ATACANTE: Gols, assists, criação de jogadas, dribles, finalizações;
-   - PONTAS (PONTA_DIREITA, PONTA_ESQUERDA): Velocidade, cruzamentos, gols, assists;
-   - SEGUNDO_ATACANTE: Gols, assists, mobilidade, participação nas jogadas de ataque;
-   - CENTROAVANTE: Gols, finalização, movimentação dentro da área, headers;
-
-   REGRAS GERAIS:
-   - Importância dos eventos (gol que decide, defesa em momento crítico, desarme decisivo);
-   - Impacto no resultado;
-   - Manter a meta limpa valoriza goleiros e defensores;
-   - Nota-base razoável (6.0) para quem apenas cumpriu o esperado;
-   - NUNCA inventar eventos, gols ou atletas que não constem nos dados.
-
-2. SELECIONAR o "11 Ideal da Rodada" (Seleção da Rodada):
-   - Formação tática: 4-3-3, 4-2-3-1 ou 4-4-2 (escolha a mais equilibrada com os disponíveis);
-   - 1 GOLEIRO;
-   - 4 defensores: ZAGUEIRO + LATERAL_DIREITO + LATERAL_ESQUERDO + 1 ZAGUEIRO ou LATERAL;
-   - 3 a 4 meio-campistas: VOLANTE, MEIA_CENTRAL, MEIA_ATACANTE (quantidade varia conforme formação);
-   - 2 a 3 atacantes: PONTA_DIREITA, PONTA_ESQUERDA, SEGUNDO_ATACANTE, CENTROAVANTE;
-   - Priorizar as maiores notas, garantindo pelo menos uma posição por linha do campo;
-   - IMPORTANTE: se a rodada tiver MENOS de 11 atletas com ações registradas (ex: campeonato society/amador), monte uma ESCALAÇÃO PARCIAL com TODOS os atletas disponíveis, distribuídos por suas linhas — nunca inventar atletas ou posições;
-   - O melhor jogador da rodada vira o "Craque da Rodada";
-   - Montar banco de reservas (até 5) com os próximos melhores.
-
-3. RESPONDER SOMENTE EM JSON válido, seguindo EXATAMENTE este schema (sem texto fora do JSON):
-{
-  "ratings": [
-    { "player_id": "string", "rating": 8.7, "justification": "string curta" }
-  ],
-  "team_of_the_week": {
-    "formation": "4-3-3",
-    "lineup": [ { "player_id": "string", "position": "PONTA_DIREITA" } ],
-    "bench": [ { "player_id": "string", "position": "MEIA_ATACANTE" } ],
-    "star_player": { "player_id": "string" },
-    "highlights": "narrativa curta destacando a atuação do Craque da Rodada"
-  }
-}
-`;
-
-    const response = await groqChatCompletion({
-      apiKey,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Você é um analista técnico de futebol especialista em avaliação de desempenho e análises táticas. Responda SOMENTE com JSON válido, sem texto fora do JSON.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.7,
-    });
-
-    const content = response.choices[0]?.message?.content || "";
-
-    // ------------------------------------------------------------------
-    // 2. Parse + validação do JSON (zod)
-    // ------------------------------------------------------------------
-    let aiParsed: z.infer<typeof aiResponseSchema>;
-    try {
-      const jsonText = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
-      aiParsed = aiResponseSchema.parse(JSON.parse(jsonText));
-    } catch (err) {
-      console.error("JSON inválido retornado pela IA:", err);
-      return NextResponse.json(
-        { error: "A IA retornou um JSON inválido. Tente novamente." },
-        { status: 502 }
-      );
-    }
-
-    // ------------------------------------------------------------------
-    // 3. Enriquecer com metadados confiáveis do banco (nunca confiar na IA)
-    //    para nome, foto, time e posição. Usar a requisição para saber em
-    //    qual partida cada atleta atuou (persistência do rating).
-    // ------------------------------------------------------------------
-    const matchByPlayer = new Map<string, string>();
-    for (const m of matches) {
-      for (const s of m.squads || []) {
-        if (s.player_id) matchByPlayer.set(s.player_id, m.matchId);
-      }
-    }
+    const { championshipId, championshipName, seasonId, roundNumber, roundName, matches } =
+      parsedBody.data;
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -326,245 +82,64 @@ TAREFAS:
       }
     );
 
-    const { data: players, error: playersError } = await supabase
-      .from("players")
-      .select("id, name, position, photo_url, teams(name)")
-      .eq("season_id", seasonId);
+    const { data: currentUser } = await supabase.auth.getUser();
+    const createdBy = currentUser?.user?.id || null;
 
-    if (playersError && !isMissingTableError(playersError)) {
-      console.error("Erro ao buscar atletas para enriquecimento:", playersError);
-    }
-
-    const metaById = new Map<
-      string,
-      { name: string; position: PlayerPosition | null; photo_url: string | null; team_name: string }
-    >();
-
-    for (const p of (players as any[]) || []) {
-      const teamName =
-        (p.teams && (p.teams as any).name) ||
-        (Array.isArray(p.teams) ? (p.teams[0] as any)?.name : undefined) ||
-        "";
-      metaById.set(String(p.id), {
-        name: p.name || "Atleta",
-        position: PLAYER_POSITIONS.includes(p.position) ? (p.position as PlayerPosition) : null,
-        photo_url: p.photo_url || null,
-        team_name: teamName,
+    try {
+      const { ratings, teamOfTheWeek } = await generateRoundRatings({
+        supabase,
+        apiKey,
+        championshipId,
+        championshipName,
+        seasonId,
+        roundNumber,
+        roundName,
+        matches: matches as RatingMatchInput[],
+        createdBy,
       });
-    }
 
-    const positionFromSquads = new Map<string, PlayerPosition>();
-    for (const m of matches) {
-      for (const s of m.squads || []) {
-        const position = normalizePositionInput(s.position);
-        if (s.player_id && position) {
-          positionFromSquads.set(s.player_id, position);
+      return NextResponse.json({
+        round: { roundNumber, roundName },
+        ratings,
+        team_of_the_week: teamOfTheWeek,
+      });
+    } catch (engineError) {
+      console.error("Erro na API de notas da rodada:", engineError);
+      await writeRatingAuditLog({
+        supabase,
+        championshipId,
+        seasonId,
+        roundNumber,
+        roundName,
+        status: "ERROR",
+        payload: {
+          match_ids: matches.map((m) => m.id ?? m.matchId!).filter(Boolean),
+          players: [],
+          error:
+            engineError instanceof Error ? engineError.message : "Erro interno ao gerar notas.",
+        },
+        createdBy,
+      }).catch((logErr: unknown) => {
+        if (!isMissingTableError(logErr)) {
+          console.error("Falha ao registrar log de erro de auditoria:", logErr);
         }
-      }
+      });
+
+      return NextResponse.json(
+        {
+          error:
+            engineError instanceof Error
+              ? engineError.message
+              : "Erro interno ao processar notas com Groq.",
+        },
+        { status: 500 }
+      );
     }
-
-    function resolvePosition(playerId: string, aiPosition?: string): PlayerPosition | null {
-      const db = metaById.get(playerId)?.position;
-      if (db) return db;
-      const squad = positionFromSquads.get(playerId);
-      if (squad) return squad;
-      const ai = normalizePositionInput(aiPosition);
-      if (ai) return ai;
-      return null;
-    }
-
-    function buildRow(
-      playerId: string,
-      rating: number,
-      aiPosition?: string
-    ): RatingRow | null {
-      const meta = metaById.get(playerId);
-      if (!meta) return null;
-      return {
-        player_id: playerId,
-        player_name: meta.name,
-        team_name: meta.team_name || "Sem equipe",
-        position: resolvePosition(playerId, aiPosition),
-        photo_url: meta.photo_url,
-        rating: Math.min(10, Math.max(0, Math.round(rating * 10) / 10)),
-      };
-    }
-
-    const ratings: RatingRow[] = [];
-    const usedIds = new Set<string>();
-    for (const r of aiParsed.ratings) {
-      const row = buildRow(r.player_id, r.rating);
-      if (row && !usedIds.has(row.player_id)) {
-        usedIds.add(row.player_id);
-        ratings.push(row);
-      }
-    }
-
-    // ------------------------------------------------------------------
-    // 4. Seleção determinística do 11 ideal (docs/03 §3)
-    // ------------------------------------------------------------------
-    const teamOfTheWeek = selectTeamOfWeek(
-      ratings,
-      aiParsed.team_of_the_week,
-      resolvePosition
-    );
-
-    // ------------------------------------------------------------------
-    // 5. Persistir notas em match_player_stats (trigger recalcula
-    //    players.average_rating)
-    // ------------------------------------------------------------------
-    const upsertRows = ratings
-      .filter((r) => matchByPlayer.has(r.player_id))
-      .map((r) => ({
-        match_id: matchByPlayer.get(r.player_id)!,
-        player_id: r.player_id,
-        rating: r.rating,
-      }));
-
-    if (upsertRows.length > 0) {
-      const { error: upsertError } = await supabase
-        .from("match_player_stats")
-        .upsert(upsertRows, { onConflict: "match_id,player_id" });
-
-      if (upsertError && !isMissingTableError(upsertError)) {
-        console.error("Erro ao salvar notas em match_player_stats:", upsertError);
-      }
-    }
-
-    // ------------------------------------------------------------------
-    // 6. Persistir a Seleção da Rodada (11 Ideal) em round_summaries,
-    //    preservando o content (boletim) já existente, se houver.
-    // ------------------------------------------------------------------
-    if (teamOfTheWeek.lineup.length > 0) {
-      const summaryPayload = {
-        championship_id: championshipId,
-        round_number: roundNumber,
-        round_name: roundName,
-        team_of_week: teamOfTheWeek as unknown as object,
-      };
-
-      try {
-        const { data: existingSummary } = await supabase
-          .from("round_summaries")
-          .select("id")
-          .eq("championship_id", championshipId)
-          .eq("round_number", roundNumber)
-          .maybeSingle();
-
-        if (existingSummary) {
-          const { error: updateError } = await supabase
-            .from("round_summaries")
-            .update(summaryPayload)
-            .eq("id", existingSummary.id);
-
-          if (updateError && !isMissingTableError(updateError)) {
-            console.error("Erro ao atualizar seleção da rodada:", updateError);
-          }
-        } else {
-          const { error: insertError } = await supabase
-            .from("round_summaries")
-            .insert({ ...summaryPayload, content: "" });
-
-          if (insertError && !isMissingTableError(insertError)) {
-            console.error("Erro ao salvar seleção da rodada:", insertError);
-          }
-        }
-      } catch (saveError) {
-        console.error("Erro ao persistir seleção da rodada:", saveError);
-      }
-    }
-
-    return NextResponse.json({
-      round: { roundNumber, roundName },
-      ratings,
-      team_of_the_week: teamOfTheWeek,
-    });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro na API de notas da rodada:", error);
     return NextResponse.json(
-      { error: error?.message || "Erro interno ao processar notas com Groq." },
+      { error: error instanceof Error ? error.message : "Erro interno ao processar notas." },
       { status: 500 }
     );
   }
-}
-
-// ------------------------------------------------------------------
-// Seleção determinística do 11 ideal (docs/03 §3)
-// ------------------------------------------------------------------
-function selectTeamOfWeek(
-  ratings: RatingRow[],
-  ai: z.infer<typeof aiResponseSchema>["team_of_the_week"],
-  resolvePosition: (playerId: string, aiPosition?: string) => PlayerPosition | null
-): TeamOfWeek {
-  const sorted = [...ratings].sort((a, b) => b.rating - a.rating);
-
-  const byLine = (line: PlayerPosition[]) => sorted.filter((p) => p.position && line.includes(p.position));
-
-  const pickByLine = (
-    line: PlayerPosition[],
-    count: number,
-    ensure?: PlayerPosition
-  ): RatingRow[] => {
-    const pool = byLine(line);
-    const picked: RatingRow[] = [];
-    if (ensure) {
-      const idx = pool.findIndex((p) => p.position === ensure);
-      if (idx >= 0) picked.push(pool.splice(idx, 1)[0]);
-    }
-    picked.push(...pool.sort((a, b) => b.rating - a.rating).slice(0, count - picked.length));
-    return picked;
-  };
-
-  let lineup: RatingRow[] = [];
-  lineup.push(...pickByLine(POSITION_LINES.GK, LINE_SLOTS.GK, "GOLEIRO"));
-  lineup.push(...pickByLine(POSITION_LINES.DEF, LINE_SLOTS.DEF));
-  lineup.push(...pickByLine(POSITION_LINES.MID, LINE_SLOTS.MID));
-  lineup.push(...pickByLine(POSITION_LINES.ATT, LINE_SLOTS.ATT, "CENTROAVANTE"));
-
-  const lineupIds = new Set(lineup.map((p) => p.player_id));
-
-  // Completar o 11 com os melhores restantes, se faltar posições preenchidas.
-  if (lineup.length < 11) {
-    const missing = 11 - lineup.length;
-    const rest = sorted.filter((p) => !lineupIds.has(p.player_id)).slice(0, missing);
-    lineup.push(...rest);
-    for (const p of rest) lineupIds.add(p.player_id);
-  }
-
-  const starPlayer = lineup.length > 0 ? [...lineup].sort((a, b) => b.rating - a.rating)[0] : null;
-
-  // Reservas: melhores fora do 11, garantindo ao menos um por linha.
-  const outside = sorted.filter((p) => !lineupIds.has(p.player_id));
-  const bench: RatingRow[] = [];
-  const benchLines = ["GK", "DEF", "MID", "ATT"] as const;
-
-  for (const lineKey of benchLines) {
-    const linePositions = POSITION_LINES[lineKey];
-    const candidate = outside.find(
-      (p) => p.position && linePositions.includes(p.position) && !bench.some((b) => b.player_id === p.player_id)
-    );
-    if (candidate) {
-      bench.push(candidate);
-    }
-  }
-  const benchIds = new Set(bench.map((b) => b.player_id));
-  bench.push(...outside.filter((p) => !benchIds.has(p.player_id)).slice(0, 5 - bench.length));
-
-  // Fallback de posições da IA para exibição (nome/foto vêm do banco).
-  const toPlayer = (row: RatingRow): TeamOfWeekPlayer => ({
-    player_id: row.player_id,
-    player_name: row.player_name,
-    team_name: row.team_name,
-    position: row.position,
-    photo_url: row.photo_url,
-    rating: row.rating,
-  });
-
-  return {
-    formation: ai.formation && ai.formation.length <= 10 ? ai.formation : "4-3-3",
-    lineup: lineup.map(toPlayer),
-    bench: bench.map(toPlayer),
-    star_player: starPlayer ? toPlayer(starPlayer) : null,
-    highlights: ai.highlights || "",
-  };
 }

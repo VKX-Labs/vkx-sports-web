@@ -28,6 +28,8 @@ interface SummaryEvent {
   player_id: string | null;
   player_name: string;
   team_name: string;
+  quantity?: number | null;
+  minute?: number | null;
 }
 
 interface SummarySquadPlayer {
@@ -40,6 +42,8 @@ interface SummarySquadPlayer {
 
 interface SummaryMatch {
   id: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
   home_score: number | null;
   away_score: number | null;
   status: string;
@@ -121,7 +125,7 @@ export default function ChampionshipHome() {
 
         const { data: eventsData, error: eventsError } = await supabase
           .from("match_events")
-          .select("id, match_id, player_id, team_id, type")
+          .select("id, match_id, player_id, team_id, type, quantity, minute")
           .in("match_id", matchIds.length > 0 ? matchIds : ["__none__"]);
 
         if (eventsError) throw eventsError;
@@ -159,6 +163,8 @@ export default function ChampionshipHome() {
             player_id: event.player_id,
             player_name: playersMap.get(event.player_id) || "Jogador",
             team_name: teamsMap.get(event.team_id)?.name || "Time",
+            quantity: event.quantity,
+            minute: event.minute,
           });
           eventsByMatch.set(event.match_id, list);
         });
@@ -190,6 +196,8 @@ export default function ChampionshipHome() {
             .filter((match) => match.round_id === round.id)
             .map((match) => ({
               id: match.id,
+              home_team_id: match.home_team_id,
+              away_team_id: match.away_team_id,
               home_score: match.home_score,
               away_score: match.away_score,
               status: match.status,
@@ -312,8 +320,18 @@ export default function ChampionshipHome() {
   };
 
   const handleGenerateRatings = async () => {
-    if (!currentRound || currentRound.matches.length === 0) {
-      setRatingsError("Nenhuma partida encontrada nesta rodada para avaliar.");
+    const finishedMatches = (currentRound?.matches || []).filter(
+      (m) =>
+        m.status === "finished" ||
+        m.status === "finalizado" ||
+        m.status === "FINISHED" ||
+        m.status === "FINALIZADO"
+    );
+
+    if (finishedMatches.length === 0) {
+      setRatingsError(
+        "Nenhuma partida finalizada encontrada nesta rodada para avaliar. Finalize ao menos uma partida para gerar as notas."
+      );
       return;
     }
 
@@ -328,9 +346,9 @@ export default function ChampionshipHome() {
           championshipId: championship?.id,
           championshipName: championship?.name || "Campeonato",
           seasonId,
-          roundNumber: currentRound.round_number,
+          roundNumber: currentRound?.round_number,
           roundName: currentRoundName,
-          matches: currentRound.matches,
+          matches: finishedMatches,
         }),
       });
 

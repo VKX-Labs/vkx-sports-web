@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Users, Search, Loader2 } from "lucide-react";
+import { Plus, Users, Search, Loader2, Star } from "lucide-react";
 import { useParams } from "next/navigation";
 import PlayerForm from "@/components/forms/PlayerForm";
 import EditPlayerModal from "@/components/forms/EditPlayerModal";
@@ -153,6 +153,12 @@ export default function JogadoresPage() {
                 </span>
 
                 <div className="flex items-center gap-1.5 mt-1.5">
+                  {player.average_rating != null && player.average_rating > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      <Star className="w-3 h-3 fill-amber-300 stroke-amber-300" />
+                      {Number(player.average_rating).toFixed(1)}
+                    </span>
+                  )}
                   {player.position && (
                     <span className="inline-block text-[10px] font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full truncate">
                       {POSITION_LABELS[player.position] ?? player.position}
