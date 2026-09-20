@@ -318,33 +318,122 @@ export async function hydrateMatchRosters(
 }
 
 // ------------------------------------------------------------------
-// MOTOR 100% DETERMINÍSTICO (SISTEMA NATIVO)
+// MOTOR 100% DETERMINÍSTICO — VKX V2 (SISTEMA NATIVO)
 //
 // Cálculo de nota por atleta sem qualquer chamada externa (IA/Groq).
-// Regras de negócio fixas:
-//   - Nota base: 6.0
-//   - Resultado: Vitória +0.5 | Empate +0.0 | Derrota -0.3
-//   - Gol: +0.8 (Meia/Atacante) / +1.2 (Defensor/Goleiro)
-//   - Assistência: +0.5
-//   - Cartão amarelo: -0.5 (por cartão)
-//   - Cartão vermelho: nota final travada em 2.0
-//   - Gol contra: -1.2
-//   - Defesa de pênalti (Goleiro): +1.5
-//   - Clamp final: 1.0 a 10.0, uma casa decimal.
+// Regras de negócio fixas da V2 (pesos por posição + tetos + retornos
+// decrescentes):
+//   - Nota base: 6.50
+//   - Resultado: Vitória +0.30 | Empate +0.00 | Derrota -0.30
+//   - Gols: peso por posição, com TETO +2.40 (não soma "gols do time").
+//   - Assistências: peso por posição, com TETO +1.50.
+//   - Índice Defensivo Coletivo (desarmes do time / média do campeonato)
+//     com teto por posição.
+//   - Goleiro: defesas com tabela progressiva (retornos decrescentes),
+//     teto +0.80.
+//   - Gols sofridos: penalidade por posição, teto -0.50.
+//   - Cartões: amarelo -0.15; vermelho direto -1.00 / 2º amarelo -0.80.
+//   - Gol contra: -0.80 (não contemplado nos tetos de ataque).
+//   - Clamp final: 3.0 a 10.0, uma casa decimal.
 // ------------------------------------------------------------------
-const BASE_RATING = 6.0;
-const WIN_BONUS = 0.5;
+const BASE_RATING = 6.5;
+const WIN_BONUS = 0.3;
 const DRAW_BONUS = 0.0;
 const LOSS_PENALTY = -0.3;
-const GOAL_BONUS_OFFENSIVE = 0.8;
-const GOAL_BONUS_DEFENSIVE = 1.2;
-const ASSIST_BONUS = 0.5;
-const YELLOW_CARD_PENALTY = -0.5;
-const RED_CARD_FINAL_RATING = 2.0;
-const OWN_GOAL_PENALTY = -1.2;
-const PENALTY_SAVE_BONUS = 1.5;
-const MIN_RATING = 1.0;
+const MIN_RATING = 3.0;
 const MAX_RATING = 10.0;
+
+// --- Gols (peso por posição) — teto total de +2.40 por atleta ---
+const GOAL_BONUS_CAP = 2.4;
+const GOAL_BONUS_BY_POSITION: Record<PlayerPosition, number> = {
+  GOLEIRO: 1.2,
+  ZAGUEIRO: 0.9,
+  LATERAL_DIREITO: 0.75,
+  LATERAL_ESQUERDO: 0.75,
+  VOLANTE: 0.7,
+  MEIA_DE_LIGACAO: 0.7,
+  MEIA_ATACANTE: 0.7,
+  PONTA_DIREITA: 0.8,
+  PONTA_ESQUERDA: 0.8,
+  SEGUNDO_ATACANTE: 0.8,
+  CENTROAVANTE: 0.8,
+};
+
+// --- Assistências (peso por posição) — teto total de +1.50 por atleta ---
+const ASSIST_BONUS_CAP = 1.5;
+const ASSIST_BONUS_BY_POSITION: Record<PlayerPosition, number> = {
+  GOLEIRO: 0.9,
+  ZAGUEIRO: 0.65,
+  LATERAL_DIREITO: 0.65,
+  LATERAL_ESQUERDO: 0.65,
+  VOLANTE: 0.6,
+  MEIA_DE_LIGACAO: 0.75,
+  MEIA_ATACANTE: 0.75,
+  PONTA_DIREITA: 0.75,
+  PONTA_ESQUERDA: 0.75,
+  SEGUNDO_ATACANTE: 0.65,
+  CENTROAVANTE: 0.65,
+};
+
+// --- Índice Defensivo Coletivo — teto do bônus por posição ---
+const DEFENSIVE_INDEX_MAX_BY_POSITION: Record<PlayerPosition, number> = {
+  GOLEIRO: 0.0,
+  ZAGUEIRO: 0.2,
+  LATERAL_DIREITO: 0.15,
+  LATERAL_ESQUERDO: 0.15,
+  VOLANTE: 0.2,
+  MEIA_DE_LIGACAO: 0.1,
+  MEIA_ATACANTE: 0.1,
+  PONTA_DIREITA: 0.05,
+  PONTA_ESQUERDA: 0.05,
+  SEGUNDO_ATACANTE: 0.03,
+  CENTROAVANTE: 0.03,
+};
+
+// --- Gols sofridos — penalidade por posição (magnitude), teto -0.50 ---
+const GOALS_CONCEDED_PENALTY_CAP = 0.5;
+const GOALS_CONCEDED_BY_POSITION: Record<PlayerPosition, number> = {
+  GOLEIRO: 0.1,
+  ZAGUEIRO: 0.07,
+  LATERAL_DIREITO: 0.05,
+  LATERAL_ESQUERDO: 0.05,
+  VOLANTE: 0.03,
+  MEIA_DE_LIGACAO: 0.02,
+  MEIA_ATACANTE: 0.02,
+  PONTA_DIREITA: 0.03,
+  PONTA_ESQUERDA: 0.03,
+  SEGUNDO_ATACANTE: 0.03,
+  CENTROAVANTE: 0.03,
+};
+
+// --- Cartões ---
+const YELLOW_CARD_PENALTY = -0.15;
+const RED_DIRECT_PENALTY = -1.0;
+const SECOND_YELLOW_PENALTY = -0.8;
+
+// --- Gol contra ---
+const OWN_GOAL_PENALTY = -0.8;
+
+// --- Goleiro: defesas com retornos decrescentes (teto +0.80) ---
+const SAVES_BONUS_CAP = 0.8;
+const SAVES_BRACKETS = [
+  { until: 3, value: 0.05 },
+  { until: 6, value: 0.07 },
+  { until: Number.MAX_SAFE_INTEGER, value: 0.08 },
+];
+
+function computeSavesBonus(totalSaves: number): number {
+  let bonus = 0;
+  if (totalSaves <= 0) return 0;
+  let last = 0;
+  for (const bracket of SAVES_BRACKETS) {
+    const countInBracket = Math.min(Math.max(totalSaves - last, 0), bracket.until - last);
+    bonus += countInBracket * bracket.value;
+    last = bracket.until;
+    if (totalSaves <= bracket.until) break;
+  }
+  return Math.min(bonus, SAVES_BONUS_CAP);
+}
 
 // Normaliza variações comuns de tipo de evento (inclui gol contra, que não
 // possui tipo próprio na tabela match_events) para o formato canônico.
@@ -387,28 +476,74 @@ export function normalizeEventType(value: string): string {
   return EVENT_TYPE_ALIASES[key] ?? value.toUpperCase().trim();
 }
 
-// Posição defensiva: Goleiro + defensores recebem o bônus maior de gol.
-function isDefensivePosition(position: PlayerPosition | null): boolean {
-  return (
-    position === "GOLEIRO" ||
-    position === "ZAGUEIRO" ||
-    position === "LATERAL_DIREITO" ||
-    position === "LATERAL_ESQUERDO"
-  );
-}
-
 function clampRating(value: number): number {
   return Math.min(MAX_RATING, Math.max(MIN_RATING, Math.round(value * 10) / 10));
 }
 
-// Nota determinística nativa de UM atleta da partida. Não depende de rede,
-// IA ou serviços externos: é pura função dos dados (resultado + eventos).
-export function computeNativeRating(
+export interface RatingComputationOptions {
+  /** Média de desarmes do campeonato (por lado de time / partida). */
+  averageTacklesPerMatch?: number;
+}
+
+export interface RatingBreakdown {
+  base: number;
+  result: number;
+  goals: number;
+  goals_bonus: number;
+  assists: number;
+  assists_bonus: number;
+  g_a: number;
+  goals_conceded: number;
+  goals_conceded_penalty: number;
+  saves: number;
+  saves_bonus: number;
+  tackles: number;
+  team_tackles: number;
+  defensive_index: number;
+  defensive_index_bonus: number;
+  yellow_cards: number;
+  yellow_card_penalty: number;
+  red_cards: number;
+  red_penalty: number;
+  own_goals: number;
+  own_goal_penalty: number;
+  rating: number;
+}
+
+export interface ComputedMatchRating {
+  rating: number;
+  breakdown: RatingBreakdown;
+}
+
+function keyForPosition(position: PlayerPosition | null): PlayerPosition {
+  return position ?? "MEIA_DE_LIGACAO";
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+// Nota determinística nativa (VKX V2) de UM atleta da partida. Não depende de
+// rede, IA ou serviços externos: é pura função dos dados (resultado + eventos
+// + índice defensivo coletivo). A métrica G+A (gols + assistências) é calculada
+// apenas para exibição e NÃO soma na nota final as componentes em dobro.
+export function computeNativeRatingDetailed(
   squad: RatingSquadPlayer,
   match: RatingMatchInput,
-  events: Array<Record<string, unknown>>
-): number {
-  let rating = BASE_RATING;
+  events: Array<Record<string, unknown>>,
+  options?: RatingComputationOptions
+): ComputedMatchRating {
+  const position = normalizePositionInput(squad.position);
+  const positionKey = keyForPosition(position);
+  const isGk = position === "GOLEIRO";
 
   const homeScore = Number(match.home_score) || 0;
   const awayScore = Number(match.away_score) || 0;
@@ -416,64 +551,148 @@ export function computeNativeRating(
   const teamScore = isHome ? homeScore : awayScore;
   const oppScore = isHome ? awayScore : homeScore;
 
-  if (teamScore > oppScore) rating += WIN_BONUS;
-  else if (teamScore === oppScore) rating += DRAW_BONUS;
-  else rating += LOSS_PENALTY;
-
-  const position = normalizePositionInput(squad.position);
-  const isGk = position === "GOLEIRO";
-  const goalBonus = isDefensivePosition(position) ? GOAL_BONUS_DEFENSIVE : GOAL_BONUS_OFFENSIVE;
+  let result = DRAW_BONUS;
+  if (teamScore > oppScore) result = WIN_BONUS;
+  else if (teamScore < oppScore) result = LOSS_PENALTY;
 
   const playerId = squad.player_id || "";
-  let redCard = false;
+  const teamId = squad.team_id ? String(squad.team_id) : null;
+
+  let goals = 0;
+  let assists = 0;
+  let saves = 0;
+  let tackles = 0;
+  let yellowCards = 0;
+  let redCards = 0;
+  let ownGoals = 0;
+  let teamTackles = 0;
 
   for (const e of events) {
     const eventPlayerId = e.player_id ? String(e.player_id) : "";
     const assistPlayerId = e.assist_player_id ? String(e.assist_player_id) : "";
     const type = normalizeEventType(String(e.type || ""));
     const qty = Math.max(1, Number(e.quantity) || 1);
+    const eventTeamId = e.team_id ? String(e.team_id) : "";
     const isForPlayer = eventPlayerId === playerId;
-    const isAssister = type === "ASSIST"
-      ? isForPlayer
-      : assistPlayerId === playerId && (type === "GOAL" || type === "PENALTY");
 
-    if (!isForPlayer && !isAssister) continue;
-
-    if (type === "RED_CARD" && isForPlayer) {
-      redCard = true;
+    if (type === "TACKLE") {
+      if (teamId && eventTeamId === teamId) teamTackles += qty;
+      if (isForPlayer) tackles += qty;
       continue;
     }
-    if (type === "YELLOW_CARD" && isForPlayer) {
-      rating += YELLOW_CARD_PENALTY * qty;
+
+    const isAssistEvent =
+      type === "ASSIST"
+        ? isForPlayer
+        : assistPlayerId === playerId && (type === "GOAL" || type === "PENALTY");
+
+    if (!isForPlayer && !isAssistEvent) continue;
+
+    if (isForPlayer) {
+      if (type === "GOAL" || type === "PENALTY") goals += qty;
+      else if (type === "OWN_GOAL") ownGoals += qty;
+      else if (type === "YELLOW_CARD") yellowCards += qty;
+      else if (type === "RED_CARD") redCards += qty;
+      else if (type === "SAVE" && isGk) saves += qty;
     }
-    if (type === "GOAL" && isForPlayer) {
-      rating += goalBonus * qty;
-    }
-    if (type === "PENALTY" && isForPlayer) {
-      rating += goalBonus * qty;
-    }
-    if (type === "OWN_GOAL" && isForPlayer) {
-      rating += OWN_GOAL_PENALTY * qty;
-    }
-    if (isAssister) {
-      rating += ASSIST_BONUS;
-    }
-    if (type === "SAVE" && isForPlayer && isGk) {
-      rating += PENALTY_SAVE_BONUS * qty;
-    }
+    if (isAssistEvent) assists += qty;
   }
 
-  if (redCard) return clampRating(RED_CARD_FINAL_RATING);
-  return clampRating(rating);
+  const goalsBonus = Math.min(GOAL_BONUS_CAP, goals * GOAL_BONUS_BY_POSITION[positionKey]);
+  const assistsBonus = Math.min(
+    ASSIST_BONUS_CAP,
+    assists * ASSIST_BONUS_BY_POSITION[positionKey]
+  );
+
+  const savesBonus = isGk ? computeSavesBonus(saves) : 0;
+
+  const concededPerGoal = GOALS_CONCEDED_BY_POSITION[positionKey];
+  const concededPenalty = Math.min(GOALS_CONCEDED_PENALTY_CAP, oppScore * concededPerGoal);
+
+  const avg = options?.averageTacklesPerMatch;
+  const defensiveIndex = avg && avg > 0 ? Math.min(1, teamTackles / avg) : 0;
+  const defensiveBonus =
+    DEFENSIVE_INDEX_MAX_BY_POSITION[positionKey] * defensiveIndex;
+
+  const yellowCardPenalty = YELLOW_CARD_PENALTY * yellowCards;
+  const redPenalty =
+    redCards > 0 ? (yellowCards > 0 ? SECOND_YELLOW_PENALTY : RED_DIRECT_PENALTY) : 0;
+  const ownGoalPenalty = OWN_GOAL_PENALTY * ownGoals;
+
+  const raw =
+    BASE_RATING +
+    result +
+    goalsBonus +
+    assistsBonus +
+    savesBonus +
+    defensiveBonus -
+    concededPenalty +
+    yellowCardPenalty +
+    redPenalty +
+    ownGoalPenalty;
+
+  const rating = clampRating(raw);
+
+  return {
+    rating,
+    breakdown: {
+      base: BASE_RATING,
+      result,
+      goals,
+      goals_bonus: round2(goalsBonus),
+      assists,
+      assists_bonus: round2(assistsBonus),
+      g_a: goals + assists,
+      goals_conceded: oppScore,
+      goals_conceded_penalty: -round2(concededPenalty),
+      saves,
+      saves_bonus: round2(savesBonus),
+      tackles,
+      team_tackles: teamTackles,
+      defensive_index: round3(defensiveIndex),
+      defensive_index_bonus: round2(defensiveBonus),
+      yellow_cards: yellowCards,
+      yellow_card_penalty: round2(yellowCardPenalty),
+      red_cards: redCards,
+      red_penalty: round2(redPenalty),
+      own_goals: ownGoals,
+      own_goal_penalty: round2(ownGoalPenalty),
+      rating,
+    },
+  };
 }
 
-// Calcula a nota nativa de TODOS os atletas do elenco de uma partida.
-export function computeNativeMatchRatings(match: RatingMatchInput): Map<string, number> {
-  const ratings = new Map<string, number>();
+export function computeNativeRating(
+  squad: RatingSquadPlayer,
+  match: RatingMatchInput,
+  events: Array<Record<string, unknown>>,
+  options?: RatingComputationOptions
+): number {
+  return computeNativeRatingDetailed(squad, match, events, options).rating;
+}
+
+// Calcula a nota/breakdown nativos (VKX V2) de TODOS os atletas do elenco de uma partida.
+export function computeNativeMatchRatingsDetailed(
+  match: RatingMatchInput,
+  options?: RatingComputationOptions
+): Map<string, ComputedMatchRating> {
+  const ratings = new Map<string, ComputedMatchRating>();
   const events = match.events || [];
   for (const squad of match.squads || []) {
     if (!squad.player_id) continue;
-    ratings.set(squad.player_id, computeNativeRating(squad, match, events));
+    ratings.set(squad.player_id, computeNativeRatingDetailed(squad, match, events, options));
+  }
+  return ratings;
+}
+
+// Calcula a nota nativa de TODOS os atletas do elenco de uma partida.
+export function computeNativeMatchRatings(
+  match: RatingMatchInput,
+  options?: RatingComputationOptions
+): Map<string, number> {
+  const ratings = new Map<string, number>();
+  for (const [playerId, computed] of computeNativeMatchRatingsDetailed(match, options)) {
+    ratings.set(playerId, computed.rating);
   }
   return ratings;
 }
@@ -744,7 +963,7 @@ async function buildRatingRows(
       team_name: meta.team_name || "Sem equipe",
       position: resolvePosition(playerId),
       photo_url: meta.photo_url,
-      rating: Math.min(10, Math.max(1, Math.round(rating * 10) / 10)),
+      rating: Math.min(MAX_RATING, Math.max(MIN_RATING, Math.round(rating * 10) / 10)),
     };
   }
 
@@ -753,7 +972,7 @@ async function buildRatingRows(
 
   // GARANTIA de cobertura: percorre TODOS os atletas dos elencos hidratados.
   // Usa a nota nativa computada quando existir; caso contrário aplica o motor
-  // determinístico (6.0 base + resultado + eventos).
+  // determinístico (6.5 base + resultado + eventos).
   for (const m of hydratedMatches) {
     const matchId = m.matchId ?? m.id;
     if (!matchId) continue;
@@ -792,6 +1011,7 @@ interface PersistMatchRatingsInput {
   roundNumber: number;
   roundName: string;
   hydratedMatch: RatingMatchInput;
+  options?: RatingComputationOptions;
   createdBy?: string | null;
 }
 
@@ -803,13 +1023,19 @@ async function persistMatchRatings(input: PersistMatchRatingsInput): Promise<Rat
     roundNumber,
     roundName,
     hydratedMatch,
+    options,
     createdBy,
   } = input;
   const matchId = hydratedMatch.matchId ?? hydratedMatch.id ?? "";
 
   try {
-    // 100% determinístico: calcula a nota nativa de TODOS os atletas do elenco.
-    const nativeRatings = computeNativeMatchRatings(hydratedMatch);
+    // 100% determinístico: calcula a nota nativa (VKX V2) de TODOS os atletas
+    // do elenco, junto com o detalhamento de cada componente (breakdown).
+    const detailed = computeNativeMatchRatingsDetailed(hydratedMatch, options);
+    const nativeRatings = new Map<string, number>();
+    for (const [playerId, computed] of detailed) {
+      nativeRatings.set(playerId, computed.rating);
+    }
 
     // Metadados confiáveis do banco + posições normalizadas.
     const { ratings } = await buildRatingRows(
@@ -819,11 +1045,29 @@ async function persistMatchRatings(input: PersistMatchRatingsInput): Promise<Rat
       new Map([[matchId, nativeRatings]])
     );
 
-    const upsertRows = ratings.map((r) => ({
-      match_id: matchId,
-      player_id: r.player_id,
-      rating: r.rating,
-    }));
+    // team_id por atleta (para preencher a coluna de match_player_stats).
+    const teamById = new Map<string, string>();
+    for (const s of hydratedMatch.squads || []) {
+      if (s.player_id && s.team_id) teamById.set(s.player_id, String(s.team_id));
+    }
+
+    const upsertRows = ratings.map((r) => {
+      const computed = detailed.get(r.player_id);
+      const breakdown = computed?.breakdown;
+      return {
+        match_id: matchId,
+        player_id: r.player_id,
+        team_id: teamById.get(r.player_id) ?? null,
+        rating: r.rating,
+        goals: breakdown?.goals ?? 0,
+        assists: breakdown?.assists ?? 0,
+        yellow_cards: breakdown?.yellow_cards ?? 0,
+        red_cards: breakdown?.red_cards ?? 0,
+        saves: breakdown?.saves ?? 0,
+        tackles: breakdown?.tackles ?? 0,
+        rating_breakdown: breakdown ?? null,
+      };
+    });
 
     // Persistência direta em match_player_stats. O upsert dispara o trigger
     // trg_sync_player_average_rating (INSERT/UPDATE OF rating), que mantém
@@ -925,7 +1169,12 @@ export async function generateMatchRatings(
   );
   const matchId = hydratedMatch.matchId ?? hydratedMatch.id ?? "";
 
-  const persisted = await persistMatchRatings({ ...input, hydratedMatch });
+  // Média de desarmes do campeonato (para o índice defensivo coletivo).
+  const options: RatingComputationOptions = {
+    averageTacklesPerMatch: await fetchLeagueTackleAverage(input.supabase, input.seasonId),
+  };
+
+  const persisted = await persistMatchRatings({ ...input, hydratedMatch, options });
 
   // Reconstrói as linhas a partir do que foi persistido (carbura nas posições
   // e metadados finais) sem refazer o cálculo.
@@ -986,6 +1235,12 @@ export async function generateRoundRatings(
   // ----- Hidratação direto do banco: elencos completos + eventos oficiais -----
   const hydratedMatches = await hydrateMatchRosters(supabase, seasonId, normalizedMatches);
 
+  // Média de desarmes do campeonato (índice defensivo coletivo da V2) —
+  // computada uma única vez para toda a rodada.
+  const options: RatingComputationOptions = {
+    averageTacklesPerMatch: await fetchLeagueTackleAverage(supabase, seasonId),
+  };
+
   const matchIds = hydratedMatches
     .map((m) => m.matchId ?? m.id)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
@@ -1014,6 +1269,7 @@ export async function generateRoundRatings(
       roundNumber,
       roundName,
       hydratedMatch: hydrated,
+      options,
       createdBy,
     });
     ratingsByMatch.set(matchId, new Map(entries.map((r) => [r.player_id, r.rating])));
@@ -1077,6 +1333,375 @@ export async function generateRoundRatings(
   }
 
   return { ratings, teamOfTheWeek };
+}
+
+// ------------------------------------------------------------------
+// Índice defensivo coletivo: média de DESARMES do campeonato.
+// Definida como o total de eventos TACKLE da temporada dividido por
+// (número de partidas finalizadas × 2 lados de time). Usado na V2 para
+// calcular o bônus defensivo de cada atleta comparando os desarmes do
+// seu time em cada partida com a média geral.
+// ------------------------------------------------------------------
+export async function fetchLeagueTackleAverage(
+  supabase: SupabaseClient,
+  seasonId: string
+): Promise<number> {
+  if (!seasonId) return 0;
+
+  try {
+    const { data: rounds, error: roundsError } = await supabase
+      .from("rounds")
+      .select("id")
+      .eq("season_id", seasonId);
+
+    if (roundsError && !isMissingTableError(roundsError)) {
+      console.error("[rating-engine] Erro ao carregar rodadas p/ média de desarmes:", roundsError);
+    }
+
+    const roundIds = (rounds || []).map((r) => r.id);
+
+    let matchesQuery = supabase
+      .from("matches")
+      .select("id")
+      .in("status", ["finished", "finalizado", "FINISHED", "FINALIZADO"]);
+
+    if (roundIds.length > 0) {
+      matchesQuery = matchesQuery.or(
+        `season_id.eq.${seasonId},round_id.in.(${roundIds.join(",")})`
+      );
+    } else {
+      matchesQuery = matchesQuery.eq("season_id", seasonId);
+    }
+
+    const { data: matches, error: matchesError } = await matchesQuery;
+    if (matchesError || !matches || matches.length === 0) return 0;
+
+    const matchIds = matches.map((m) => m.id);
+    const { data: events, error: eventsError } = await supabase
+      .from("match_events")
+      .select("type, quantity")
+      .in("match_id", matchIds)
+      .eq("type", "TACKLE");
+
+    if (eventsError && !isMissingTableError(eventsError)) {
+      console.error("[rating-engine] Erro ao carregar desarmes do campeonato:", eventsError);
+    }
+
+    const totalTackles = (events || []).reduce(
+      (sum, e) => sum + (Number(e.quantity) || 1),
+      0
+    );
+
+    // Média por lado de time (2 times por partida).
+    return (totalTackles || 0) / (matches.length * 2);
+  } catch (err) {
+    console.error("[rating-engine] Falha ao calcular média de desarmes:", err);
+    return 0;
+  }
+}
+
+// ------------------------------------------------------------------
+// RECÁLCULO GERAL (VKX V2)
+//
+// recalculateMatchRatings(matchId?, championshipId?) reprocessa TODOS os
+// eventos cadastrados das partidas finalizadas e regrava a nota de cada
+// atleta com a fórmula V2. Aceita:
+//   - matchId: recalcula somente uma partida específica;
+//   - championshipId: recalcula todas as partidas finalizadas da temporada;
+//   - roundNumber (opcional): filtra a recálculo para uma rodada específica.
+// A função sempre re-gera as notas (force), sobrescrevendo as congeladas.
+// ------------------------------------------------------------------
+export interface RecalculateMatchRatingsInput {
+  matchId?: string;
+  championshipId: string;
+  seasonId?: string;
+  roundNumber?: number | null;
+  force?: boolean;
+  createdBy?: string | null;
+}
+
+export interface RecalculatedMatch {
+  matchId: string;
+  roundNumber: number;
+  roundName: string;
+  playersRated: number;
+}
+
+export interface RecalculateMatchRatingsResult {
+  championshipId: string;
+  seasonId: string;
+  recalculated: RecalculatedMatch[];
+  playersRated: number;
+}
+
+interface LoadedFinishedMatch {
+  matchId: string;
+  roundNumber: number;
+  roundName: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  status: string | null;
+}
+
+async function loadSeasonFinishedMatches(
+  supabase: SupabaseClient,
+  seasonId: string,
+  roundNumber?: number | null
+): Promise<LoadedFinishedMatch[]> {
+  let roundFilter: { id: string; round_number: number; name: string }[] | null = null;
+
+  if (typeof roundNumber === "number" && roundNumber > 0) {
+    const { data, error } = await supabase
+      .from("rounds")
+      .select("id, round_number, name")
+      .eq("season_id", seasonId)
+      .eq("round_number", roundNumber);
+
+    if (error && !isMissingTableError(error)) {
+      console.error("[rating-engine] Erro ao carregar rodada p/ recálculo:", error);
+    }
+    roundFilter = (data || []).map((r) => ({
+      id: r.id,
+      round_number: r.round_number,
+      name: r.name || "",
+    }));
+  }
+
+  if (roundNumber && (!roundFilter || roundFilter.length === 0)) return [];
+
+  const { data: roundsForSeason, error: roundsError } = await supabase
+    .from("rounds")
+    .select("id, round_number, name")
+    .eq("season_id", seasonId);
+
+  if (roundsError && !isMissingTableError(roundsError)) {
+    console.error("[rating-engine] Erro ao carregar rodadas p/ recálculo:", roundsError);
+  }
+
+  const roundMeta = new Map<string, { round_number: number; name: string }>();
+  for (const r of (roundsForSeason || []) as Array<{
+    id: string;
+    round_number: number;
+    name: string;
+  }>) {
+    roundMeta.set(r.id, { round_number: r.round_number, name: r.name || "" });
+  }
+
+  const allRoundIds = roundMeta.size > 0 ? Array.from(roundMeta.keys()) : [];
+  let allowedRoundIds: string[] | null = null;
+  if (roundFilter) {
+    allowedRoundIds = roundFilter.map((r) => r.id);
+  }
+
+  let query = supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, home_score, away_score, status, round_id")
+    .in("status", ["finished", "finalizado", "FINISHED", "FINALIZADO"]);
+
+  if (allowedRoundIds && allowedRoundIds.length > 0) {
+    query = query.in("round_id", allowedRoundIds);
+  } else if (allRoundIds.length > 0) {
+    query = query.or(`season_id.eq.${seasonId},round_id.in.(${allRoundIds.join(",")})`);
+  } else {
+    query = query.eq("season_id", seasonId);
+  }
+
+  const { data, error } = await query;
+
+  if (error && !isMissingTableError(error)) {
+    console.error("[rating-engine] Erro ao carregar partidas p/ recálculo:", error);
+  }
+
+  const matches: LoadedFinishedMatch[] = [];
+  for (const m of (data || []) as Array<{
+    id: string;
+    home_team_id: string | null;
+    away_team_id: string | null;
+    home_score: number | null;
+    away_score: number | null;
+    status: string | null;
+    round_id: string | null;
+  }>) {
+    const meta = m.round_id ? roundMeta.get(m.round_id) : null;
+    matches.push({
+      matchId: String(m.id),
+      roundNumber: meta?.round_number ?? 1,
+      roundName:
+        meta?.name || (meta?.round_number != null ? `${meta.round_number}ª Rodada` : "Rodada"),
+      home_team_id: m.home_team_id ?? null,
+      away_team_id: m.away_team_id ?? null,
+      home_score: typeof m.home_score === "number" ? m.home_score : null,
+      away_score: typeof m.away_score === "number" ? m.away_score : null,
+      status: m.status ?? null,
+    });
+  }
+
+  return matches;
+}
+
+export async function recalculateMatchRatings(
+  supabase: SupabaseClient,
+  input: RecalculateMatchRatingsInput
+): Promise<RecalculateMatchRatingsResult> {
+  const { matchId, championshipId, createdBy, force = true } = input;
+
+  const seasonId =
+    input.seasonId ||
+    (await (async () => {
+      const { data: firstSeason, error } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("championship_id", championshipId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error && !isMissingTableError(error)) {
+        console.error("[rating-engine] Erro ao resolver temporada p/ recálculo:", error);
+      }
+      return firstSeason?.id || null;
+    })());
+
+  if (!seasonId) {
+    throw new Error("Nenhuma temporada encontrada para este campeonato.");
+  }
+
+  let loadedMatches: LoadedFinishedMatch[] = [];
+
+  if (matchId) {
+    const { data: match, error } = await supabase
+      .from("matches")
+      .select("id, home_team_id, away_team_id, home_score, away_score, status, round_id")
+      .eq("id", matchId)
+      .maybeSingle();
+
+    if (error && !isMissingTableError(error)) {
+      throw new Error(`Erro ao carregar a partida: ${error.message}`);
+    }
+
+    if (!match) {
+      throw new Error("Partida não encontrada.");
+    }
+    if (!isFinishedMatchStatus(match.status)) {
+      throw new Error("A partida informada precisa estar finalizada para ter notas recalculadas.");
+    }
+
+    let roundMeta: { round_number: number; name: string } | null = null;
+    if (match.round_id) {
+      const { data: round, error: roundError } = await supabase
+        .from("rounds")
+        .select("round_number, name")
+        .eq("id", match.round_id)
+        .maybeSingle();
+
+      if (roundError && !isMissingTableError(roundError)) {
+        console.error("[rating-engine] Erro ao carregar rodada da partida:", roundError);
+      }
+      roundMeta = round
+        ? { round_number: round.round_number, name: round.name || "" }
+        : null;
+    }
+
+    loadedMatches.push({
+      matchId: String(match.id),
+      roundNumber: roundMeta?.round_number ?? 1,
+      roundName:
+        roundMeta?.name ||
+        (roundMeta?.round_number != null ? `${roundMeta.round_number}ª Rodada` : "Rodada"),
+      home_team_id: match.home_team_id ?? null,
+      away_team_id: match.away_team_id ?? null,
+      home_score: typeof match.home_score === "number" ? match.home_score : null,
+      away_score: typeof match.away_score === "number" ? match.away_score : null,
+      status: typeof match.status === "string" ? match.status : null,
+    });
+  } else {
+    loadedMatches = await loadSeasonFinishedMatches(supabase, seasonId, input.roundNumber);
+  }
+
+  if (loadedMatches.length === 0) {
+    throw new Error("Nenhuma partida finalizada encontrada para recalcular notas.");
+  }
+
+  // Conegelamento opcional: com force=false, partidas já avaliadas são puladas.
+  if (!force) {
+    const ratedMatchIds = await listRatedMatchIds(
+      supabase,
+      loadedMatches.map((m) => m.matchId)
+    );
+    const pending = loadedMatches.filter((m) => !ratedMatchIds.has(m.matchId));
+
+    if (pending.length === 0) {
+      return {
+        championshipId,
+        seasonId,
+        recalculated: [],
+        playersRated: 0,
+      };
+    }
+    loadedMatches = pending;
+  }
+
+  const rewardInputs: RatingMatchInput[] = loadedMatches.map((m) => ({
+    id: m.matchId,
+    matchId: m.matchId,
+    home_team_id: m.home_team_id,
+    away_team_id: m.away_team_id,
+    home_score: m.home_score,
+    away_score: m.away_score,
+    status: m.status,
+  }));
+
+  // Hidratação direto do banco: elencos completos + eventos oficiais.
+  const hydratedMatches = await hydrateMatchRosters(supabase, seasonId, rewardInputs);
+
+  const options: RatingComputationOptions = {
+    averageTacklesPerMatch: await fetchLeagueTackleAverage(supabase, seasonId),
+  };
+
+  const recalculated: RecalculatedMatch[] = [];
+  let playersRated = 0;
+
+  for (const hydrated of hydratedMatches) {
+    const loaded = loadedMatches.find(
+      (m) => m.matchId === (hydrated.matchId ?? hydrated.id)
+    );
+    const matchIdResolved = hydrated.matchId ?? hydrated.id ?? "";
+    if (!matchIdResolved) continue;
+
+    const entries = await persistMatchRatings({
+      supabase,
+      championshipId,
+      seasonId,
+      roundNumber: loaded?.roundNumber ?? 1,
+      roundName: loaded?.roundName ?? "Rodada",
+      hydratedMatch: hydrated,
+      options,
+      createdBy,
+    });
+
+    recalculated.push({
+      matchId: matchIdResolved,
+      roundNumber: loaded?.roundNumber ?? 1,
+      roundName: loaded?.roundName ?? "Rodada",
+      playersRated: entries.length,
+    });
+    playersRated += entries.length;
+  }
+
+  // Consistência final das médias de TODOS os atletas.
+  try {
+    await supabase.rpc("recalculate_all_average_ratings");
+  } catch (rpcError) {
+    console.error("[rating-engine] Erro ao recalcular médias via RPC:", rpcError);
+  }
+
+  return {
+    championshipId,
+    seasonId,
+    recalculated,
+    playersRated,
+  };
 }
 
 async function fetchNewAverageRatings(

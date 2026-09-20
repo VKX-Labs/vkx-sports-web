@@ -121,6 +121,13 @@ export function RatingAuditLogsSection({
 
   const runBackfill = async (roundNumber?: number) => {
     const isRoundRegen = typeof roundNumber === "number";
+
+    const confirmation = isRoundRegen
+      ? `Re-gerar as notas da ${roundNumber}ª rodada com a fórmula VKX V2? As notas desta rodada serão sobrescritas.`
+      : "Recalcular TODAS as notas do campeonato com a fórmula VKX V2? As notas congeladas (versão V1) serão sobrescritas em lote usando os eventos já cadastrados.";
+
+    if (!window.confirm(confirmation)) return;
+
     setBackfill({ running: true, message: null, error: null });
     if (isRoundRegen) setRegeneratingRound(roundNumber);
 
@@ -131,7 +138,7 @@ export function RatingAuditLogsSection({
         body: JSON.stringify({
           championshipId,
           roundNumber: isRoundRegen ? roundNumber : undefined,
-          force: isRoundRegen,
+          force: true,
         }),
       });
 
@@ -142,7 +149,7 @@ export function RatingAuditLogsSection({
 
       const summary =
         data.message ||
-        `${data.processedRounds?.length || 0} rodada(s) processadas.`;
+        `${data.processedRounds?.length || 0} rodada(s) e ${data.playersRated ?? 0} atleta(s) recalculados com a fórmula VKX V2.`;
 
       setBackfill({
         running: false,
@@ -174,9 +181,9 @@ export function RatingAuditLogsSection({
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Registro de cada geração de notas (uma entrada por partida),
-              visível apenas para administradores. Notas calculadas ficam
-              congeladas em match_player_stats e não são reprocessadas a menos
-              que uma re-geração seja solicitada.
+              visível apenas para administradores. O campeonato usa a fórmula
+              VKX V2; o botão recalcula todas as notas existentes a partir dos
+              eventos cadastrados, sobrescrevendo as notas congeladas.
             </p>
           </div>
         </div>
@@ -191,7 +198,7 @@ export function RatingAuditLogsSection({
           ) : (
             <RefreshCw className="w-3.5 h-3.5" />
           )}
-          Recalcular notas históricas
+          Recalcular Notas
         </button>
       </div>
 

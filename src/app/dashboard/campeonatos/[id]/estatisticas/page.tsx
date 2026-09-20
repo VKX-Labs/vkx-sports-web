@@ -10,6 +10,8 @@ import {
 import { StatisticsService, PlayerStat } from "@/services/StatisticsService";
 import { Shield, Award, Square, Star, Medal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useWorkspace } from "@/features/championships/components/workspace/WorkspaceProvider";
+import { RecalculateRatingsButton } from "@/components/tournament/rating/RecalculateRatingsButton";
 
 type CategoryKey = "GOAL" | "ASSIST" | "SAVE" | "YELLOW_CARD" | "RED_CARD" | "RATING";
 
@@ -32,6 +34,8 @@ const CATEGORIES: CategoryConfig[] = [
 export default function EstatisticasPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const championshipId = resolvedParams.id;
+
+  const { canManageRatings } = useWorkspace();
 
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("GOAL");
@@ -107,11 +111,17 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Líderes de Estatísticas</h1>
-        <p className="text-sm text-gray-400">
-          Selecione uma categoria para visualizar os melhores atletas do campeonato.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Líderes de Estatísticas</h1>
+          <p className="text-sm text-gray-400">
+            Selecione uma categoria para visualizar os melhores atletas do campeonato.
+          </p>
+        </div>
+
+        {canManageRatings && (
+          <RecalculateRatingsButton championshipId={championshipId} />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-4">
