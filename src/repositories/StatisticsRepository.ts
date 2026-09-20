@@ -9,6 +9,7 @@ export interface RawMatchEvent {
     id: string;
     name: string;
     photo_url: string | null;
+    position: string | null;
     teams: {
       id: string;
       name: string;
@@ -19,6 +20,7 @@ export interface RawMatchEvent {
     id: string;
     name: string;
     photo_url: string | null;
+    position: string | null;
     teams: {
       id: string;
       name: string;
@@ -37,6 +39,7 @@ export interface RawPlayerRating {
   id: string;
   name: string;
   photo_url: string | null;
+  position: string | null;
   average_rating: number | string | null;
   teams: RawPlayerTeam | RawPlayerTeam[] | null;
 }
@@ -51,6 +54,7 @@ export class StatisticsRepository {
           id,
           name,
           photo_url,
+          position,
           average_rating,
           teams:team_id (
             id,
@@ -177,6 +181,7 @@ export class StatisticsRepository {
           id,
           name,
           photo_url,
+          position,
           teams:team_id (
             id,
             name,

@@ -2,6 +2,11 @@
 
 import { useEffect, useState, use } from "react";
 import { LeaderboardCard } from "./components/LeaderboardCard";
+import {
+  PositionFilter,
+  POSITION_FILTER_OPTIONS,
+  POSITION_FILTER_ALL,
+} from "./components/PositionFilter";
 import { StatisticsService, PlayerStat } from "@/services/StatisticsService";
 import { Shield, Award, Square, Star, Medal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -30,6 +35,7 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
 
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("GOAL");
+  const [activePosition, setActivePosition] = useState<string>(POSITION_FILTER_ALL);
   const [statsData, setStatsData] = useState<Record<CategoryKey, PlayerStat[]>>({
     GOAL: [],
     ASSIST: [],
@@ -86,6 +92,18 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
 
   const activeConfig = CATEGORIES.find((c) => c.key === activeCategory)!;
   const currentList = statsData[activeCategory] || [];
+  const activePositionOption =
+    POSITION_FILTER_OPTIONS.find((o) => o.key === activePosition) ??
+    POSITION_FILTER_OPTIONS[0];
+  const activePositionSet = new Set<string>(activePositionOption.positions);
+  const filteredList =
+    activePositionOption.positions.length === 0
+      ? currentList
+      : currentList.filter(
+          (player) =>
+            player.player_position != null &&
+            activePositionSet.has(player.player_position)
+        );
 
   return (
     <div className="p-6 space-y-6">
@@ -116,6 +134,8 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
         })}
       </div>
 
+      <PositionFilter value={activePosition} onChange={setActivePosition} />
+
       {loading ? (
         <div className="p-8 text-center text-gray-400 bg-gray-900/40 rounded-xl border border-gray-800">
           Carregando estatísticas...
@@ -124,7 +144,7 @@ export default function EstatisticasPage({ params }: { params: Promise<{ id: str
         <LeaderboardCard
           title={activeConfig.label}
           icon={activeConfig.icon}
-          stats={currentList}
+          stats={filteredList}
           metricLabel={activeConfig.metricLabel}
         />
       )}

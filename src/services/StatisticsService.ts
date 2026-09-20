@@ -4,6 +4,7 @@ export interface PlayerStat {
   player_id: string;
   player_name: string;
   player_photo: string | null;
+  player_position?: string | null;
   team_name: string;
   team_badge: string | null;
   count: number;
@@ -52,6 +53,7 @@ export class StatisticsService {
           player_id: row.player_id || player.id || player.player_id,
           player_name: player.name || player.player_name || "Jogador sem nome",
           player_photo: player.photo_url || player.player_photo || null,
+          player_position: player.position || null,
           team_name: team?.name || row.team_name || "Sem time",
           team_badge: team?.badge_url || row.team_badge || null,
           count: countValue,
@@ -86,6 +88,7 @@ export class StatisticsService {
           player_id: targetPlayerId,
           player_name: targetPlayer.name || "Jogador sem nome",
           player_photo: targetPlayer.photo_url || null,
+          player_position: targetPlayer.position || null,
           team_name: team?.name || "Sem time",
           team_badge: team?.badge_url || null,
           count: 0,
@@ -156,6 +159,7 @@ export class StatisticsService {
           player_id: row.id,
           player_name: row.name || "Jogador sem nome",
           player_photo: row.photo_url || null,
+          player_position: row.position || null,
           team_name: team?.name || "Sem time",
           team_badge: team?.badge_url || null,
           count: rating,
